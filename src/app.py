@@ -232,7 +232,7 @@ def run_db_config():
         with redirect_stdout(stdout_capture), redirect_stderr(stderr_capture):
             try:
                 # Import and run your db_config function
-                from db_config import db_config
+                from db_config import db_config 
                 success = db_config()
             except Exception as e:
                 success = False
