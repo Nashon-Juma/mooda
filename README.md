@@ -18,7 +18,7 @@ This documentation is intended for hobbyists or businesses who want to host this
 
 ## ⚠️ Requirements
 
-**python** - >= v3.10
+**python** - >= v3.11
 
 **make** - You might want to use Chocolatey in order to install make on Windows
 
