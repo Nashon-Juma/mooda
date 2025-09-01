@@ -59,7 +59,7 @@ app.secret_key = os.getenv("APP_SECRET_KEY")
 @app.route("/")  # homepage route
 def home_page():
     """Route for home page."""
-    data = {"doc_title": "Home | Mindease"}
+    data = {"doc_title": "Home | Mooda"}
     return render_template("index.html", data=data)
 
 
@@ -84,7 +84,7 @@ def register():
 
         try_register(user_data)  # attempt to register user
 
-    data = {"doc_title": "Register | Mindease", "register_form": form}
+    data = {"doc_title": "Register | Mooda", "register_form": form}
     return render_template("register.html", data=data)
 
 
@@ -103,7 +103,7 @@ def login():
 
         return try_login(user_data)  # attempt to login & return result
 
-    data = {"doc_title": "Login | Mindease", "login_form": form}
+    data = {"doc_title": "Login | Mooda", "login_form": form}
     return render_template("login.html", data=data)
 
 
@@ -136,7 +136,7 @@ def checkup():
     todays_checkup = try_checkup("display", data=None)  # fetch todays checkup
 
     data = {
-        "doc_title": "Checkup | Mindease",
+        "doc_title": "Checkup | Mooda",
         "checkup_form": form,
         "checkup": todays_checkup,
     }
@@ -157,7 +157,7 @@ def myspace():
     assertion = get_assertion()  # fetch assertion from external API
 
     data = {
-        "doc_title": "My Space | Mindease",
+        "doc_title": "My Space | Mooda",
         "assertion": assertion,
         "doctor_key": doctor_key,
     }
@@ -193,7 +193,7 @@ def journals():
     )  # attempt to fetch journals
 
     data = {
-        "doc_title": "My Space - Journals | Mindease",
+        "doc_title": "My Space - Journals | Mooda",
         "journal_form": form,
         "user_journals": fetched_journals,
     }
@@ -203,7 +203,7 @@ def journals():
 @app.route("/aboutus")  # about us route
 def aboutus():
     """Route for about us page."""
-    data = {"doc_title": "About Us | Mindease"}
+    data = {"doc_title": "About Us | Mooda"}
     return render_template("aboutus.html", data=data)
 
 
@@ -215,7 +215,7 @@ def doctor_form():
         session["doctor_key"] = form.doctor_key.data
         return redirect(url_for("doctor_view"))
 
-    data = {"doc_title": "Psychologist Portal | Mindease", "doctor_form": form}
+    data = {"doc_title": "Psychologist Portal | Mooda", "doctor_form": form}
     return render_template("doctorform.html", data=data)
 
 
@@ -254,7 +254,7 @@ def doctor_view():
     session.pop("doctor_key", None)  # force doctor key session to expire
 
     data = {
-        "doc_title": "Psychologist View | Mindease",
+        "doc_title": "Psychologist View | Mooda",
         "journals": fetched_journals,
         "data_summary_result": data_summary_result,
     }
@@ -265,7 +265,7 @@ def doctor_view():
 @app.errorhandler(404)
 def page_not_found(err):
     """Handle 404 errors, custom page."""
-    data = {"doc_title": "Page not found | Mindease", "e": err}
+    data = {"doc_title": "Page not found | Mooda", "e": err}
     return render_template("404.html", data=data), 404
 
 

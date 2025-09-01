@@ -1,16 +1,16 @@
 
 <br />
-<img width="300" alt="Mindease Logo" src="https://i.imgur.com/shPchlq.png">
+<img width="300" alt="Mooda Logo" src="https://i.imgur.com/shPchlq.png">
 <br />
 
 [![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/OZuNZr?referralCode=AkPWra)
 
-| ![license badge](https://img.shields.io/badge/license%20-MIT-green) | ![coverage badge](https://img.shields.io/badge/coverage%20-90%25-success) | ![pylint badge](https://img.shields.io/badge/pylint-passed-blue) | ![pylint badge](https://img.shields.io/badge/flake8-passed-blue) | ![black badge](https://img.shields.io/badge/code%20syle-black-black) |
+| ![coverage badge](https://img.shields.io/badge/coverage%20-90%25-success) | ![pylint badge](https://img.shields.io/badge/pylint-passed-blue) | ![pylint badge](https://img.shields.io/badge/flake8-passed-blue) | ![black badge](https://img.shields.io/badge/code%20syle-black-black) |
 |:---:|:---:|:---:|:---:|:---:|
 
-## 🤔 What is Mindease?
+## 🤔 What is Mooda?
 
-Mindease is an open-source web application built with [Flask](https://flask.palletsprojects.com/). It allows users to track and work to elevate their mood swings on a daily basis using a scale. Additionally, users can journal to reflect on their day, share their progress with a psychologist, and unwind while listening to instrumental music that encourages meditation.
+Mooda is an open-source web application built with [Flask](https://flask.palletsprojects.com/). It allows users to track and work to elevate their mood swings on a daily basis using a scale. Additionally, users can journal to reflect on their day, share their progress with a psychologist, and unwind while listening to instrumental music that encourages meditation.
 
 ## 🤔 Who is this documentation for?
 
@@ -38,13 +38,13 @@ This documentation is intended for hobbyists or businesses who want to host this
 Clone the project
 
 ```bash
-  git clone https://github.com/bigcbull/mindease.git
+  git clone https://github.com/bigcbull/mooda.git
 ```
 
 Go to the project directory
 
 ```bash
-  cd mindease
+  cd mooda
 ```
 
 Create and activate a virtual environment - (Linux/macOS) 
@@ -77,9 +77,9 @@ APP_SECRET_KEY = <Random Solid Key>
 
 # Example:
 
-DATABASE_NAME=mindease
-DATABASE_HOSTNAME=db.mindease.com
-DATABASE_USER=mindease_user
+DATABASE_NAME=mooda
+DATABASE_HOSTNAME=db.mooda.com
+DATABASE_USER=mooda_user
 DATABASE_PASSWORD=XPxv39ebR5P4B4a
 APP_PORT=5000
 APP_SECRET_KEY=SyRe462xk9uScqB
