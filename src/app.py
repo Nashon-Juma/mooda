@@ -220,7 +220,7 @@ def run_db_config():
     """Run database configuration directly"""
     try:
         # Capture output
-        import io
+        import io 
         import sys
         from contextlib import redirect_stdout, redirect_stderr
         
