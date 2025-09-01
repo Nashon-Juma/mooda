@@ -1,0 +1,263 @@
+
+document.addEventListener('DOMContentLoaded', function() {
+  const analyzeBtn = document.getElementById('analyzeBtn');
+  const inputText = document.getElementById('inputText');
+  const status = document.getElementById('status');
+  const analyzeIcon = document.getElementById('analyzeIcon');
+
+  let barChart = null;
+  let lineChart = null;
+  const HISTORY_KEY = 'emotion_history_v1';
+
+  function loadHistory() {
+    try { 
+      return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); 
+    } catch { 
+      return []; 
+    }
+  }
+  
+  function saveHistory(h) { 
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(h)); 
+  }
+
+  function initCharts(labelsPossible=[]) {
+    const barCtx = document.getElementById('barChart').getContext('2d');
+    if (barChart) barChart.destroy();
+    
+    barChart = new Chart(barCtx, {
+      type: 'bar',
+      data: {
+        labels: labelsPossible,
+        datasets: [{
+          label: 'Probability',
+          data: labelsPossible.map(() => 0),
+          backgroundColor: [
+            'rgba(72, 95, 199, 0.7)',
+            'rgba(120, 94, 218, 0.7)',
+            'rgba(186, 104, 200, 0.7)',
+            'rgba(247, 143, 30, 0.7)',
+            'rgba(48, 191, 130, 0.7)',
+            'rgba(69, 149, 247, 0.7)'
+          ],
+          borderColor: [
+            'rgb(72, 95, 199)',
+            'rgb(120, 94, 218)',
+            'rgb(186, 104, 200)',
+            'rgb(247, 143, 30)',
+            'rgb(48, 191, 130)',
+            'rgb(69, 149, 247)'
+          ],
+          borderWidth: 1,
+          borderRadius: 6,
+          hoverBackgroundColor: [
+            'rgba(72, 95, 199, 0.9)',
+            'rgba(120, 94, 218, 0.9)',
+            'rgba(186, 104, 200, 0.9)',
+            'rgba(247, 143, 30, 0.9)',
+            'rgba(48, 191, 130, 0.9)',
+            'rgba(69, 149, 247, 0.9)'
+          ]
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: { 
+          y: { 
+            beginAtZero: true, 
+            max: 1,
+            ticks: {
+              callback: function(value) {
+                return (value * 100).toFixed(0) + '%';
+              }
+            }
+          } 
+        },
+        plugins: { 
+          legend: { 
+            display: false 
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                return context.dataset.label + ': ' + (context.raw * 100).toFixed(2) + '%';
+              }
+            }
+          }
+        }
+      }
+    });
+
+    const lineCtx = document.getElementById('lineChart').getContext('2d');
+    if (lineChart) lineChart.destroy();
+    
+    lineChart = new Chart(lineCtx, { 
+      type: 'line', 
+      data: { 
+        labels: [], 
+        datasets: [] 
+      }, 
+      options: { 
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false, 
+        interaction: {
+          mode: 'index', 
+          intersect: false
+        }, 
+        scales: { 
+          y: { 
+            beginAtZero: true, 
+            max: 1,
+            ticks: {
+              callback: function(value) {
+                return (value * 100).toFixed(0) + '%';
+              }
+            }
+          } 
+        },
+        plugins: {
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                return context.dataset.label + ': ' + (context.raw * 100).toFixed(2) + '%';
+              }
+            }
+          }
+        }
+      } 
+    });
+  }
+
+  function updateBar(labels, scores) {
+    if (!barChart) initCharts(labels);
+    barChart.data.labels = labels;
+    barChart.data.datasets[0].data = scores;
+    barChart.update();
+  }
+
+  function updateTrendChart(history) {
+    const last = history.slice(-30);
+    if (!last.length) {
+      lineChart.data.labels = [];
+      lineChart.data.datasets = [];
+      lineChart.update();
+      return;
+    }
+
+    const labelsX = last.map(h => {
+      const d = new Date(h.ts);
+      return d.toLocaleTimeString();
+    });
+
+    const allLabels = Object.keys(last[0].scores).sort();
+    
+    // Define a color palette for the line chart
+    const colorPalette = [
+      { border: 'rgb(72, 95, 199)', background: 'rgba(72, 95, 199, 0.1)' },
+      { border: 'rgb(120, 94, 218)', background: 'rgba(120, 94, 218, 0.1)' },
+      { border: 'rgb(186, 104, 200)', background: 'rgba(186, 104, 200, 0.1)' },
+      { border: 'rgb(247, 143, 30)', background: 'rgba(247, 143, 30, 0.1)' },
+      { border: 'rgb(48, 191, 130)', background: 'rgba(48, 191, 130, 0.1)' },
+      { border: 'rgb(69, 149, 247)', background: 'rgba(69, 149, 247, 0.1)' }
+    ];
+    
+    const datasets = allLabels.map((lbl, idx) => ({
+      label: lbl,
+      data: last.map(h => h.scores[lbl] ?? 0),
+      fill: true,
+      tension: 0.4,
+      borderWidth: 3,
+      borderColor: colorPalette[idx % colorPalette.length].border,
+      backgroundColor: colorPalette[idx % colorPalette.length].background,
+      pointBackgroundColor: colorPalette[idx % colorPalette.length].border,
+      pointBorderColor: '#fff',
+      pointBorderWidth: 2,
+      pointRadius: 4,
+      pointHoverRadius: 6
+    }));
+
+    lineChart.data.labels = labelsX;
+    lineChart.data.datasets = datasets;
+    lineChart.update();
+  }
+
+  // Initialize charts on page load
+  (function(){
+    const history = loadHistory();
+    if (history.length) {
+      const labels = Object.keys(history[history.length-1].scores).sort();
+      initCharts(labels);
+      updateTrendChart(history);
+    } else {
+      initCharts([]);
+    }
+  })();
+
+  analyzeBtn.addEventListener('click', async () => {
+    const text = inputText.value.trim();
+    if (!text) {
+      status.textContent = 'Please type something about how you feel.';
+      status.className = 'ml-4 has-text-danger is-size-7';
+      return;
+    }
+
+    status.textContent = 'Analyzing...';
+    status.className = 'ml-4 has-text-info is-size-7';
+    analyzeBtn.classList.add('is-loading');
+    analyzeBtn.disabled = true;
+    
+    // Show loading spinner
+    analyzeIcon.setAttribute('name', 'sync');
+    analyzeIcon.classList.add('loading');
+
+    try {
+      const res = await fetch('/analyze', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ text })
+      });
+      const json = await res.json();
+      
+      if (!res.ok) {
+        status.textContent = 'Error: ' + (json?.error || res.statusText);
+        status.className = 'ml-4 has-text-danger is-size-7';
+        analyzeBtn.disabled = false;
+        analyzeBtn.classList.remove('is-loading');
+        analyzeIcon.setAttribute('name', 'analytics');
+        analyzeIcon.classList.remove('loading');
+        return;
+      }
+
+      const labels = json.labels;
+      const scores = json.scores;
+
+      // Convert to map for history entry
+      const entryScores = {};
+      labels.forEach((l, i) => entryScores[l] = +scores[i]);
+
+      updateBar(labels, scores);
+
+      const history = loadHistory();
+      history.push({ ts: Date.now(), scores: entryScores, text });
+      if (history.length > 200) history.shift();
+      saveHistory(history);
+      updateTrendChart(history);
+
+      status.textContent = 'Analysis complete';
+      status.className = 'ml-4 has-text-success is-size-7';
+      
+      // Clear input after successful analysis
+      inputText.value = '';
+    } catch (err) {
+      status.textContent = 'Network/client error: ' + err.message;
+      status.className = 'ml-4 has-text-danger is-size-7';
+    } finally {
+      analyzeBtn.disabled = false;
+      analyzeBtn.classList.remove('is-loading');
+      analyzeIcon.setAttribute('name', 'analytics');
+      analyzeIcon.classList.remove('loading');
+    }
+  });
+});

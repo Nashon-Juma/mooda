@@ -101,6 +101,54 @@ def db_config():
             )
             """
         )
+        
+    # -------------------- EMOTIONS TABLE --------------------
+    cursor.execute("SHOW TABLES LIKE 'emotions';")
+    emotions_exists = cursor.fetchone() is not None
+
+    if emotions_exists:
+        print("emotions table exists!")
+    else:
+        cursor.execute(
+            """
+            CREATE TABLE emotions (
+                id INT NOT NULL AUTO_INCREMENT,
+                user_id INT NOT NULL,
+                input_text TEXT NOT NULL,
+                emotion_data TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (id),
+                KEY fk_user_id_emotions (user_id),
+                CONSTRAINT fk_user_id_emotions FOREIGN KEY (user_id)
+                    REFERENCES User (user_id) ON DELETE CASCADE
+            )
+            """
+        )
+        
+    # -------------------- SUBSCRIPTIONS TABLE --------------------
+    cursor.execute("SHOW TABLES LIKE 'subscriptions';")
+    subscriptions_exists = cursor.fetchone() is not None
+
+    if subscriptions_exists:
+        print("subscriptions table exists!")
+    else:
+        cursor.execute(
+            """
+            CREATE TABLE subscriptions (
+                id INT PRIMARY KEY AUTO_INCREMENT,
+                user_id INT NOT NULL,
+                plan_name VARCHAR(255) NOT NULL,
+                amount DECIMAL(10,2) NOT NULL,
+                status VARCHAR(50) DEFAULT 'active',
+                start_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                end_date TIMESTAMP NULL,
+                paystack_reference VARCHAR(255) UNIQUE,
+                paystack_customer_code VARCHAR(255),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES user (user_id)
+            )
+            """
+        )
 
     cursor.close()
     conn.cnx.close()

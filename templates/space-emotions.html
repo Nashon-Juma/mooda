@@ -1,0 +1,201 @@
+{% extends 'space.html' %}
+
+{% block space %}
+<div id="myspace-emotions-data">
+  <div id="myspace-emotions-history">
+    <h4 class="title is-4">Your Emotion History 📊</h4>
+    
+    {% if data.emotion_history %}
+    <div id="myspace-emotions-cards">
+      {% for emotion in data.emotion_history %}
+      <div class="card mb-4">
+        <div class="card-content">
+          <div class="media">
+            <div class="media-content">
+              <p class="title is-5">
+                {{ emotion.data.labels[0] }} ({{ (emotion.data.scores[0] * 100)|round(1) }}%)
+              </p>
+              <p class="subtitle is-6">{{ emotion.date }}</p>
+            </div>
+            <div class="media-right">
+              <span class="tag is-info is-light">
+                {{ emotion.data.labels|length }} emotions detected
+              </span>
+            </div>
+          </div>
+          
+          <div class="content">
+            <p class="mb-3">{{ emotion.text }}</p>
+            
+            <div class="emotion-bars mb-4">
+              {% for i in range(emotion.data.labels|length) %}
+              <div class="emotion-bar">
+                <div class="emotion-label">{{ emotion.data.labels[i] }}</div>
+                <progress 
+                  class="progress is-primary" 
+                  value="{{ emotion.data.scores[i] * 100 }}" 
+                  max="100"
+                >
+                  {{ (emotion.data.scores[i] * 100)|round(1) }}%
+                </progress>
+                <div class="emotion-percentage">
+                  {{ (emotion.data.scores[i] * 100)|round(1) }}%
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+            
+            <time datetime="{{ emotion.date }}">{{ emotion.date }}</time>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="notification is-warning">
+      <p>No emotion analysis history yet.</p>
+      <br>
+      <a href="/analyze" class="button is-small is-info">
+        Analyze your first text
+      </a>
+    </div>
+    {% endif %}
+  </div>
+  
+  <div id="myspace-emotions-analyze">
+    <h4 class="title is-4">New Emotion Analysis 🧠</h4>
+    
+    <div id="emotion-notifications">
+      {% with successes = get_flashed_messages(category_filter=["success"]) %}
+        {% if successes %}
+        <article class="message is-success">
+          <div class="message-body">
+            {%- for msg in successes %}
+            <strong>{{ msg }}</strong>
+            {% endfor -%}
+          </div>
+        </article>
+        {% endif %}
+      {% endwith %}
+      
+      {% with errors = get_flashed_messages(category_filter=["error"]) %}
+        {% if errors %}
+        <article class="message is-danger">
+          <div class="message-body">
+            {%- for msg in errors %}
+            <strong>{{ msg }}</strong>
+            {% endfor -%}
+          </div>
+        </article>
+        {% endif %}
+      {% endwith %}
+    </div>
+    
+    <form id="emotion-form" action="/analyze" method="POST">
+      <div class="field">
+        <label class="label">How are you feeling?</label>
+        <div class="control">
+          <textarea 
+            class="textarea" 
+            name="text" 
+            placeholder="Type how you feel..." 
+            rows="4"
+            required
+          ></textarea>
+        </div>
+      </div>
+      
+      <div class="field">
+        <div class="control">
+          <button class="button is-black" type="submit">Analyze Emotions</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<style>
+#myspace-emotions-data {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+}
+
+.emotion-bar {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.emotion-label {
+  width: 120px;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.emotion-bar .progress {
+  flex-grow: 1;
+  margin: 0 0.5rem;
+  height: 0.8rem;
+}
+
+.emotion-percentage {
+  width: 50px;
+  text-align: right;
+  font-size: 0.8rem;
+  color: #777;
+}
+
+@media screen and (max-width: 768px) {
+  #myspace-emotions-data {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const emotionForm = document.getElementById('emotion-form');
+  
+  emotionForm.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(emotionForm);
+    const text = formData.get('text').trim();
+    
+    if (!text) {
+      alert('Please enter some text to analyze');
+      return;
+    }
+    
+    const submitBtn = emotionForm.querySelector('button[type="submit"]');
+    submitBtn.classList.add('is-loading');
+    submitBtn.disabled = true;
+    
+    try {
+      const response = await fetch('/analyze', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ text })
+      });
+      
+      const result = await response.json();
+      
+      if (response.ok) {
+        // Show success message and reload the page to see new analysis
+        window.location.reload();
+      } else {
+        alert('Error: ' + (result.error || 'Analysis failed'));
+      }
+    } catch (error) {
+      alert('Network error: ' + error.message);
+    } finally {
+      submitBtn.classList.remove('is-loading');
+      submitBtn.disabled = false;
+    }
+  });
+});
+</script>
+{% endblock %}
