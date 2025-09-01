@@ -1,6 +1,6 @@
 
 <br />
-<img width="300" alt="Mooda Logo" src="https://i.imgur.com/shPchlq.png">
+<img width="300" alt="Mooda Logo" src="/static/img/logo.png">
 <br />
 
 [![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/OZuNZr?referralCode=AkPWra)
@@ -41,7 +41,7 @@ Clone the project
   git clone https://github.com/bigcbull/mooda.git
 ```
 
-Go to the project directory
+Go to the project directory /Users/nashon1/Downloads/mindease-main/static/img/myspace.jpg
 
 ```bash
   cd mooda
