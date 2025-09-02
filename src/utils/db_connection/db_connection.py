@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""DBConnection module for remote MySQL connections."""
+"""DBConnection module for remote MySQL connections with full compatibility."""
 
 import os
 import mysql.connector
@@ -36,7 +36,8 @@ def retry_operation(max_retries=3, delay=2, backoff=2):
                     
                     # Try to reconnect if connection is lost
                     if "connection" in str(e).lower() or "interface" in str(e).lower():
-                        args[0]._reconnect_pool()
+                        if args and hasattr(args[0], '_reconnect_pool'):
+                            args[0]._reconnect_pool()
             return None
         return wrapper
     return decorator
@@ -77,6 +78,9 @@ class DBConnection:
             except Error as e:
                 logger.error(f"❌ Error initializing connection pool: {e}")
                 cls._connection_pool = None
+            except Exception as e:
+                logger.error(f"❌ Unexpected error initializing pool: {e}")
+                cls._connection_pool = None
 
     def __init__(self):
         """Init constructor for DBConnection class."""
@@ -84,7 +88,7 @@ class DBConnection:
             DBConnection.initialize_pool()
         
         self.connection = None
-        self.cursor = None
+        self._cursor = None  # Private cursor for backward compatibility
         self._get_connection()
 
     def _get_connection(self):
@@ -92,12 +96,15 @@ class DBConnection:
         try:
             if DBConnection._connection_pool:
                 self.connection = DBConnection._connection_pool.get_connection()
-                if self.connection.is_connected():
+                if self.connection and self.connection.is_connected():
                     logger.info("✅ Successfully connected to remote MySQL database")
-                return True
+                    # Initialize cursor for backward compatibility
+                    self._cursor = self.connection.cursor()
+                    return True
         except Error as e:
             logger.error(f"❌ Error getting connection from pool: {e}")
             self.connection = None
+            self._cursor = None
         return False
 
     def _reconnect_pool(self):
@@ -112,6 +119,7 @@ class DBConnection:
             logger.error(f"❌ Error reconnecting pool: {e}")
             return False
 
+    # ---------- FORWARD COMPATIBILITY METHODS (Recommended) ----------
     @retry_operation(max_retries=3, delay=2)
     def execute_query(self, query, params=None):
         """Execute a query that doesn't return results (INSERT, UPDATE, DELETE)."""
@@ -175,11 +183,59 @@ class DBConnection:
             logger.error(f"Params: {params}")
             raise e
 
+    # ---------- BACKWARD COMPATIBILITY PROPERTIES AND METHODS ----------
+    @property
+    def cnx(self):
+        """Backward compatibility alias for connection."""
+        return self.connection
+
+    @property
+    def cursor(self):
+        """Backward compatibility property for cursor."""
+        if self._cursor is None or not self.connection.is_connected():
+            if self.connection and self.connection.is_connected():
+                self._cursor = self.connection.cursor(dictionary=True)
+            else:
+                self._get_connection()
+        return self._cursor
+
+    def execute(self, query, params=None):
+        """Backward compatibility method for cursor.execute()."""
+        if self.cursor:
+            return self.cursor.execute(query, params or ())
+        raise Error("No database connection available")
+
+    def fetchone(self):
+        """Backward compatibility method for cursor.fetchone()."""
+        if self.cursor:
+            return self.cursor.fetchone()
+        raise Error("No database connection available")
+
+    def fetchall(self):
+        """Backward compatibility method for cursor.fetchall()."""
+        if self.cursor:
+            return self.cursor.fetchall()
+        raise Error("No database connection available")
+
+    def commit(self):
+        """Backward compatibility method for connection.commit()."""
+        if self.connection:
+            return self.connection.commit()
+        raise Error("No database connection available")
+
+    def rollback(self):
+        """Backward compatibility method for connection.rollback()."""
+        if self.connection:
+            return self.connection.rollback()
+        raise Error("No database connection available")
+
+    # ---------- UTILITY METHODS ----------
     def close(self):
         """Close the database connection and return it to the pool."""
         try:
-            if self.cursor:
-                self.cursor.close()
+            if self._cursor:
+                self._cursor.close()
+                self._cursor = None
             if self.connection:
                 self.connection.close()
                 logger.info("✅ MySQL connection returned to pool")
@@ -199,7 +255,7 @@ class DBConnection:
         except Error:
             return False
 
-    # Context manager support for with statements
+    # ---------- CONTEXT MANAGER SUPPORT ----------
     def __enter__(self):
         """Enter the runtime context related to this object."""
         return self
@@ -208,7 +264,7 @@ class DBConnection:
         """Exit the runtime context and close the connection."""
         self.close()
 
-    # Backward compatibility methods
+    # ---------- BACKWARD COMPATIBILITY METHODS ----------
     def reconnect(self):
         """Reconnect to the database if connection is lost."""
         if not self.is_connected():
@@ -217,7 +273,7 @@ class DBConnection:
             return self._get_connection()
         return True
 
-    # Static method for quick queries
+    # ---------- STATIC METHODS ----------
     @staticmethod
     @retry_operation(max_retries=3, delay=2)
     def execute_quick_query(query, params=None):
@@ -249,6 +305,9 @@ class DBConnection:
             
         except Error as e:
             logger.error(f"❌ Error in quick query: {e}")
+            raise e
+        except Exception as e:
+            logger.error(f"❌ Unexpected error in quick query: {e}")
             raise e
 
 # Global connection pool initialization
