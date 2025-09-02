@@ -1,5 +1,6 @@
 {% extends 'layout.html' %}
 {% block content %}
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -28,12 +29,25 @@
     <div class="bg-white rounded-xl shadow border p-4 mb-6">
       <form id="analysisForm" onsubmit="return false;">
         <label class="block text-slate-600 text-sm mb-2">How are you feeling today?</label>
-        <textarea id="inputText" name="text" rows="4" placeholder="Type freely about your mood, thoughts, or what happened today..."
-          class="w-full p-4 rounded-lg border-black focus:border-black focus:ring-black text-slate-800"></textarea>
+        <textarea id="inputText" name="text" rows="4"
+          placeholder="Type freely about your mood, thoughts, or what happened today..." style="width: 100%; 
+                        padding: 1rem; 
+                        border-radius: 0.5rem; 
+                        border: 1px solid rgb(199, 179, 179); 
+                        outline: none; 
+                        color: rgb(30, 41, 59); 
+                        box-sizing: border-box;"
+          onfocus="this.style.borderColor='black'; this.style.boxShadow='0 0 0 1px black';"
+          onblur="this.style.borderColor='black'; this.style.boxShadow='none';">
+        </textarea>
+
         <div class="mt-3 flex items-center gap-3">
-          <button id="analyzeBtn" type="button" class="inline-flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-md text-sm font-medium">
-            <svg id="analyzeIcon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M3 3v1.5M3 12h1.5M3 20.25V21M21 3v1.5M21 12h-1.5M21 20.25V21M7.5 3h9M7.5 21h9M3 7.5h1.5M21 7.5h-1.5M3 16.5h1.5M21 16.5h-1.5" />
+          <button id="analyzeBtn" type="button"
+            class="inline-flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+            <svg id="analyzeIcon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+              stroke="currentColor" class="w-5 h-5">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M3 3v1.5M3 12h1.5M3 20.25V21M21 3v1.5M21 12h-1.5M21 20.25V21M7.5 3h9M7.5 21h9M3 7.5h1.5M21 7.5h-1.5M3 16.5h1.5M21 16.5h-1.5" />
             </svg>
             Analyze
           </button>
@@ -55,7 +69,8 @@
           <div class="w-full h-2 bg-slate-100 rounded-full">
             <div id="valenceBar" class="h-2 bg-emerald-500 rounded-full" style="width: 0%"></div>
           </div>
-          <div class="text-xs text-slate-500 mt-1"><span id="valenceText">—</span> (<span id="positivityText">—</span> positive)</div>
+          <div class="text-xs text-slate-500 mt-1"><span id="valenceText">—</span> (<span id="positivityText">—</span>
+            positive)</div>
         </div>
       </div>
       <div class="bg-white rounded-xl shadow border p-4">
@@ -127,8 +142,10 @@
       </div>
       <div class="absolute inset-0 flex items-center justify-center">
         <div class="bg-white/90 backdrop-blur rounded-lg shadow px-4 py-3 text-center">
-          <div class="text-sm text-slate-700 font-medium">Log in to unlock Emotion Profile, Keywords and Suggestions</div>
-          <a href="{{ url_for('login') }}" class="mt-2 inline-block bg-teal-600 hover:bg-teal-700 text-white px-3 py-1.5 rounded text-sm">Login</a>
+          <div class="text-sm text-slate-700 font-medium">Log in to unlock Emotion Profile, Keywords and Suggestions
+          </div>
+          <a href="{{ url_for('login') }}"
+            class="mt-2 inline-block bg-teal-600 hover:bg-teal-700 text-white px-3 py-1.5 rounded text-sm">Login</a>
         </div>
       </div>
     </div>
@@ -197,15 +214,18 @@
       if (barChart) barChart.destroy();
       barChart = new Chart(ctx, {
         type: 'bar',
-        data: { labels, datasets: [{
-          label: 'Probability', data: labels.map(() => 0),
-          backgroundColor: labels.map((_, i) => `hsl(${(i * 60) % 360} 70% 65% / 0.7)`),
-          borderColor: labels.map((_, i) => `hsl(${(i * 60) % 360} 70% 45% / 1)`),
-          borderWidth: 1, borderRadius: 6
-        }]},
-        options: { responsive: true, maintainAspectRatio: false,
+        data: {
+          labels, datasets: [{
+            label: 'Probability', data: labels.map(() => 0),
+            backgroundColor: labels.map((_, i) => `hsl(${(i * 60) % 360} 70% 65% / 0.7)`),
+            borderColor: labels.map((_, i) => `hsl(${(i * 60) % 360} 70% 45% / 1)`),
+            borderWidth: 1, borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
           scales: { y: { beginAtZero: true, max: 1, ticks: { callback: v => (v * 100).toFixed(0) + '%' } } },
-          plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => (ctx.raw * 100).toFixed(2) + '%' }}}
+          plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => (ctx.raw * 100).toFixed(2) + '%' } } }
         }
       });
     }
@@ -215,7 +235,8 @@
       if (lineChart) lineChart.destroy();
       lineChart = new Chart(ctx, {
         type: 'line', data: { labels: [], datasets: [] },
-        options: { responsive: true, maintainAspectRatio: false, animation: false,
+        options: {
+          responsive: true, maintainAspectRatio: false, animation: false,
           interaction: { mode: 'index', intersect: false },
           scales: { y: { beginAtZero: true, max: 1, ticks: { callback: v => (v * 100).toFixed(0) + '%' } } },
           plugins: { legend: { display: true }, tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${(ctx.raw * 100).toFixed(2)}%` } } }
@@ -228,11 +249,14 @@
       if (radarChart) radarChart.destroy();
       radarChart = new Chart(ctx, {
         type: 'radar',
-        data: { labels, datasets: [{
-          label: 'Emotion Profile', data: labels.map(() => 0),
-          fill: true, backgroundColor: 'rgba(99,102,241,0.15)', borderColor: 'rgb(99,102,241)', pointBackgroundColor: 'rgb(99,102,241)'
-        }] },
-        options: { responsive: true, maintainAspectRatio: false,
+        data: {
+          labels, datasets: [{
+            label: 'Emotion Profile', data: labels.map(() => 0),
+            fill: true, backgroundColor: 'rgba(99,102,241,0.15)', borderColor: 'rgb(99,102,241)', pointBackgroundColor: 'rgb(99,102,241)'
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
           scales: { r: { beginAtZero: true, max: 1, ticks: { display: false }, grid: { color: 'rgba(148,163,184,0.3)' } } },
           plugins: { legend: { display: false } }
         }
