@@ -5,6 +5,8 @@
 
 import bcrypt
 import logging
+import time
+import mysql.connector
 from src.utils.db_connection.db_connection import DBConnection
 
 # Set up logging
@@ -18,19 +20,67 @@ class Login:
         # Don't create connection in init, create per operation
         pass
 
-    def validate_password(self, email, password):
-        """Validate password function."""
+    def login(self, email, password):
+        """Login function."""
+        logger.info(f"Starting login for email: {email}")
+        start_time = time.time()
         try:
             with DBConnection() as db:
+                logger.info("Fetched DB connection")
+                query_time = time.time()
+                query = "SELECT email FROM User WHERE email=%s"
+                result = db.fetch_one(query, (email,))
+                logger.info(f"Email query took {time.time() - query_time:.2f} seconds")
+                
+                if result is not None:
+                    logger.info("Email found, validating password")
+                    password_start = time.time()
+                    if isinstance(password, str):
+                        password_bytes = password.encode('utf-8')
+                    else:
+                        password_bytes = password
+                    
+                    result = self.validate_password(email, password_bytes)
+                    logger.info(f"Password validation took {time.time() - password_start:.2f} seconds")
+                    
+                    if result.get("matches") is True:
+                        logger.info("Login succeeded")
+                        return {"login_succeeded": True}
+                    else:
+                        logger.info("Invalid password")
+                        return {"login_succeeded": False, "reason": "Invalid password"}
+                else:
+                    logger.info("Email not found")
+                    return {"login_succeeded": False, "reason": "Email not found"}
+                    
+        except mysql.connector.Error as e:
+            logger.error(f"Database error in login: {e}")
+            return {"login_succeeded": False, "reason": f"Database error: {str(e)}"}
+        except Exception as e:
+            logger.error(f"Unexpected error in login: {e}")
+            return {"login_succeeded": False, "reason": f"Unexpected error: {str(e)}"}
+        finally:
+            logger.info(f"Total login time: {time.time() - start_time:.2f} seconds")
+
+    def validate_password(self, email, password):
+        """Validate password function."""
+        logger.info(f"Validating password for email: {email}")
+        start_time = time.time()
+        try:
+            with DBConnection() as db:
+                query_time = time.time()
                 query = "SELECT password FROM User WHERE email=%s LIMIT 1"
                 result = db.fetch_one(query, (email,))
+                logger.info(f"Password query took {time.time() - query_time:.2f} seconds")
                 
                 if result is None:
+                    logger.info("No user found")
                     return {"hashed_password_found": False, "matches": False}
 
                 hashed_password = result.get("password")
                 
                 if not hashed_password:
+                    logger.info("No hashed password found")
                     return {"hashed_password_found": False, "matches": False}
 
                 # Ensure password is bytes for bcrypt
@@ -41,38 +91,17 @@ class Login:
                 if isinstance(hashed_password, str):
                     hashed_password = hashed_password.encode('utf-8')
                 
-                if bcrypt.checkpw(password, hashed_password):
-                    return {"hashed_password_found": True, "matches": True}
-                else:
-                    return {"hashed_password_found": True, "matches": False}
-                    
-        except Exception as e:
-            logger.error(f"Error in validate_password: {e}")
-            return {"hashed_password_found": False, "matches": False}
-
-    def login(self, email, password):
-        """Login function."""
-        try:
-            with DBConnection() as db:
-                query = "SELECT email FROM User WHERE email=%s"
-                result = db.fetch_one(query, (email,))
+                check_start = time.time()
+                matches = bcrypt.checkpw(password, hashed_password)
+                logger.info(f"bcrypt.checkpw took {time.time() - check_start:.2f} seconds")
                 
-                if result is not None:
-                    # Ensure password is encoded if it's a string
-                    if isinstance(password, str):
-                        password_bytes = password.encode('utf-8')
-                    else:
-                        password_bytes = password
-                    
-                    result = self.validate_password(email, password_bytes)
-                    
-                    if result.get("matches") is True:
-                        return {"login_succeeded": True}
-                    else:
-                        return {"login_succeeded": False, "reason": "Invalid password"}
-                else:
-                    return {"login_succeeded": False, "reason": "Email not found"}
-                    
+                return {"hashed_password_found": True, "matches": matches}
+                        
+        except mysql.connector.Error as e:
+            logger.error(f"Database error in validate_password: {e}")
+            return {"hashed_password_found": False, "matches": False}
         except Exception as e:
-            logger.error(f"Error in login: {e}")
-            return {"login_succeeded": False, "reason": f"Error: {str(e)}"}
+            logger.error(f"Unexpected error in validate_password: {e}")
+            return {"hashed_password_found": False, "matches": False}
+        finally:
+            logger.info(f"Total validate_password time: {time.time() - start_time:.2f} seconds")
