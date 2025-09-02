@@ -131,7 +131,7 @@ Example - To view documentation for the user module in the user package one can 
 
 ***Note:*** *Windows users might need to use a bash terminal such as [git bash](https://gitforwindows.org/) in order for this to work correctly.*
 ## 👨‍🎓 Authors
-- [@Nashon Juma](https://www.github.com/shuaybw)
+- [@Nashon Juma](https://www.github.com/nashon-juma)
 
 ## ©️ Credits
 
