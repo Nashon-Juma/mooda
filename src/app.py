@@ -4,6 +4,9 @@
 """Flask module."""
 
 import os
+
+import re
+import math
 from pathlib import Path
 from textwrap import dedent
 from datetime import datetime
@@ -106,110 +109,261 @@ def analysis_post():
     Accepts:
       - JSON: { "text": "I feel..." }
       - form-encoded: text=<...>
-    Sends the text to Hugging Face Inference API and returns JSON:
-      { labels: [...], scores: [...], raw: {...} }
-    """
-    # Try JSON first, then form fallback
-    data = request.get_json(silent=True)
-    text = None
-    if data and "text" in data:
-        text = data["text"]
-    else:
-        # fallback to form data (e.g. normal form submit)
-        text = request.form.get("text") if request.form else None
 
+    Calls the Hugging Face Inference API for emotion classification and returns
+    a richer analytics payload to power the new UI, while preserving
+    {labels, scores} for backward compatibility.
+
+    Response:
+      {
+        labels: string[],
+        scores: number[],
+        raw: any,
+        dominant_emotion: string,
+        confidence: number,          # top label probability
+        entropy: number,             # 0..1 normalized uncertainty
+        valence: number,             # -1..1 weighted affective valence
+        positivity: number,          # 0..1 mapped from valence
+        arousal: number,             # 0..1 weighted arousal
+        keywords: {text: string, score: number}[],
+        suggestions: string[],
+        prompt: string,
+        stats: { word_count: int, unique_ratio: float, reading_time_min: float },
+        model: string
+      }
+    """
+
+    # ---------- helpers ----------
+    def _parse_text_from_request():
+        data = request.get_json(silent=True)
+        if data and isinstance(data, dict) and "text" in data:
+            return (data["text"] or "").strip()
+        if request.form:
+            return (request.form.get("text") or "").strip()
+        return None
+
+    def _hf_emotion(_text: str):
+        headers = {
+            "Authorization": f"Bearer {HF_API_TOKEN}",
+            "Content-Type": "application/json",
+        }
+        try:
+            r = requests.post(API_URL, headers=headers, json={"inputs": _text}, timeout=30)
+        except requests.exceptions.RequestException as e:
+            return (None, (500, {"error": "Network error when calling HF Inference API.", "details": str(e)}))
+        if r.status_code == 401:
+            return (None, (401, {"error": "Unauthorized — check your HF_API_TOKEN."}))
+        if r.status_code == 503:
+            return (None, (503, {"error": "Model temporarily unavailable or warming up (503). Try again in a few seconds."}))
+        if r.status_code >= 400:
+            return (None, (r.status_code, {"error": "HF API error", "status_code": r.status_code, "text": r.text}))
+        try:
+            return (r.json(), None)
+        except ValueError:
+            return (None, (500, {"error": "Invalid JSON from HF API", "text": r.text}))
+
+    def _normalize_labels_scores(result):
+        labels, scores = [], []
+        # List format
+        if isinstance(result, list) and len(result) > 0:
+            if isinstance(result[0], list):
+                result = result[0]
+            if all(isinstance(x, dict) and "label" in x and "score" in x for x in result):
+                ordered = sorted(result, key=lambda x: x["score"], reverse=True)
+                labels = [o["label"] for o in ordered]
+                scores = [float(o["score"]) for o in ordered]
+            elif all(isinstance(x, dict) and any(k in x for k in ["label", "entity", "token"]) for x in result):
+                tmp = []
+                for it in result:
+                    lbl = it.get("label") or it.get("entity") or it.get("token")
+                    sc = float(it.get("score", 0))
+                    if lbl is not None:
+                        tmp.append((lbl, sc))
+                tmp.sort(key=lambda t: t[1], reverse=True)
+                if tmp:
+                    labels, scores = zip(*tmp)
+                    labels, scores = list(labels), list(scores)
+        # Dict format
+        elif isinstance(result, dict):
+            if "label" in result and "score" in result:
+                labels = [result["label"]]
+                scores = [float(result["score"])]
+            else:
+                for _, value in result.items():
+                    if isinstance(value, list) and all(isinstance(x, dict) for x in value):
+                        if all("label" in x and "score" in x for x in value):
+                            ordered = sorted(value, key=lambda x: x["score"], reverse=True)
+                            labels = [o["label"] for o in ordered]
+                            scores = [float(o["score"]) for o in ordered]
+                            break
+        return labels, scores
+
+    def _entropy(prob):
+        prob = [p for p in prob if p is not None]
+        total = sum(prob) if prob else 0
+        if total <= 0 or len(prob) <= 1:
+            return 0.0
+        p = [max(1e-12, x / total) for x in prob]
+        h = -sum(x * math.log(x) for x in p)
+        return float(h / math.log(len(p)))
+
+    def _affect(labels, scores):
+        # valence in [-1, 1], arousal in [0, 1]
+        valence_map = {
+            "joy": 0.95, "happiness": 0.95, "love": 0.9, "optimism": 0.7, "gratitude": 0.8,
+            "surprise": 0.2, "neutral": 0.0,
+            "sadness": -0.85, "pessimism": -0.6, "fear": -0.9, "anger": -0.9, "disgust": -0.9,
+            "annoyance": -0.5, "disappointment": -0.6, "embarrassment": -0.5, "remorse": -0.6,
+        }
+        arousal_map = {
+            "joy": 0.7, "happiness": 0.7, "love": 0.5, "optimism": 0.55, "gratitude": 0.4,
+            "surprise": 0.85, "neutral": 0.2,
+            "sadness": 0.3, "pessimism": 0.35, "fear": 0.9, "anger": 0.9, "disgust": 0.75,
+            "annoyance": 0.6, "disappointment": 0.45, "embarrassment": 0.6, "remorse": 0.5,
+        }
+        if not labels or not scores:
+            return 0.0, 0.0
+        total = sum(scores) or 1.0
+        v = sum(valence_map.get(lbl.lower(), 0.0) * sc for lbl, sc in zip(labels, scores)) / total
+        a = sum(arousal_map.get(lbl.lower(), 0.5) * sc for lbl, sc in zip(labels, scores)) / total
+        return float(max(-1.0, min(1.0, v))), float(max(0.0, min(1.0, a)))
+
+    STOPWORDS = set(
+        [
+            "i","me","my","myself","we","our","ours","ourselves","you","your","yours","yourself","yourselves",
+            "he","him","his","himself","she","her","hers","herself","it","its","itself","they","them","their","theirs","themselves",
+            "what","which","who","whom","this","that","these","those","am","is","are","was","were","be","been","being",
+            "have","has","had","having","do","does","did","doing","a","an","the","and","but","if","or","because","as","until","while",
+            "of","at","by","for","with","about","against","between","into","through","during","before","after","above","below","to","from",
+            "up","down","in","out","on","off","over","under","again","further","then","once","here","there","when","where","why","how",
+            "all","any","both","each","few","more","most","other","some","such","no","nor","not","only","own","same","so","than","too","very",
+            "can","will","just","don","should","now"
+        ]
+    )
+
+    def _tokenize(text):
+        return re.findall(r"[A-Za-z']+", text.lower())
+
+    def _keywords(text, topk=8):
+        tokens = _tokenize(text)
+        if not tokens:
+            return [], {"word_count": 0, "unique_ratio": 0.0, "reading_time_min": 0.0}
+        words = [t for t in tokens if t not in STOPWORDS and len(t) > 2]
+        wc = len(tokens)
+        unique_ratio = (len(set(tokens)) / wc) if wc > 0 else 0.0
+        rt = wc / 200.0  # ~200 wpm
+        freq = {}
+        for w in words:
+            freq[w] = freq.get(w, 0) + 1
+        if not freq:
+            return [], {"word_count": wc, "unique_ratio": round(unique_ratio, 3), "reading_time_min": round(rt, 2)}
+        total = sum(freq.values())
+        scored = [(w, c / total) for w, c in freq.items()]
+        scored.sort(key=lambda x: x[1], reverse=True)
+        top = scored[:topk]
+        return (
+            [{"text": w, "score": round(s, 4)} for w, s in top],
+            {"word_count": wc, "unique_ratio": round(unique_ratio, 3), "reading_time_min": round(rt, 2)}
+        )
+
+    def _suggestions(emotion: str):
+        e = (emotion or "").lower()
+        base = [
+            "Take three deep breaths",
+            "Name what you feel (labeling emotions reduces intensity)",
+            "Write a short gratitude note (1-2 sentences)",
+        ]
+        mapping = {
+            "anger": ["Try a 5-minute walk to discharge energy", "Delay response to triggers by 10 minutes"],
+            "sadness": ["Reach out to a trusted person", "Do one small self-care action"],
+            "fear": ["List what you can control vs. cannot", "Ground yourself with 5-4-3-2-1 technique"],
+            "disgust": ["Identify the boundary being crossed", "Practice self-compassion statement"],
+            "surprise": ["Write initial reaction and a second interpretation", "Pause before acting"],
+            "joy": ["Savor the moment (describe 3 details)", "Share the good news with someone"],
+            "love": ["Send a kind message", "Plan a mindful connection activity"],
+            "neutral": ["Do a quick body scan", "Set a simple intention for the next hour"],
+            "optimism": ["Set a concrete next step", "Visualize success for 60 seconds"],
+            "pessimism": ["Challenge one negative prediction", "Note one thing that went okay today"],
+        }
+        return base + mapping.get(e, [])
+
+    def _prompt(emotion: str):
+        e = (emotion or "").lower()
+        prompts = {
+            "anger": "What boundary felt crossed, and how can you assert it kindly?",
+            "sadness": "What loss or unmet need is present right now?",
+            "fear": "What outcome do you fear most, and what would help you feel 10% safer?",
+            "disgust": "What value of yours feels violated?",
+            "surprise": "What expectation was disrupted and what new possibility exists?",
+            "joy": "What specifically made this feel good and how can you amplify it?",
+            "love": "What connection are you grateful for and why?",
+            "neutral": "What small action would make the next hour 1% better?",
+            "optimism": "What is one realistic step toward the outcome you hope for?",
+            "pessimism": "What evidence challenges your most negative expectation?",
+        }
+        return prompts.get(e, "What feels most important to acknowledge right now?")
+
+    # ---------- main flow ----------
+    text = _parse_text_from_request()
     if text is None:
         return jsonify({"error": "Please send JSON or form data with 'text' field."}), 400
-
-    text = text.strip()
     if not text:
         return jsonify({"error": "Empty text."}), 400
 
-    headers = {
-        "Authorization": f"Bearer {HF_API_TOKEN}",
-        "Content-Type": "application/json",
-    }
+    result, err = _hf_emotion(text)
+    if err is not None:
+        status, payload = err
+        return jsonify(payload), status
 
-    # call Hugging Face Inference API
-    try:
-        resp = requests.post(API_URL, headers=headers, json={"inputs": text}, timeout=30)
-    except requests.exceptions.RequestException as e:
-        return jsonify({"error": "Network error when calling HF Inference API.", "details": str(e)}), 500
-
-    if resp.status_code == 401:
-        return jsonify({"error": "Unauthorized — check your HF_API_TOKEN."}), 401
-    if resp.status_code == 503:
-        return jsonify({"error": "Model temporarily unavailable or warming up (503). Try again in a few seconds."}), 503
-    if resp.status_code >= 400:
-        return jsonify({"error": "HF API error", "status_code": resp.status_code, "text": resp.text}), resp.status_code
-
-    try:
-        result = resp.json()
-    except ValueError:
-        return jsonify({"error": "Invalid JSON from HF API", "text": resp.text}), 500
-
-    # Handle different response formats from HF API
-    labels = []
-    scores = []
-    
-    # Format 1: List of dictionaries with label and score
-    if isinstance(result, list) and len(result) > 0:
-        if isinstance(result[0], list):
-            # Handle nested list format
-            result = result[0]
-            
-        if all(isinstance(x, dict) and "label" in x and "score" in x for x in result):
-            result_sorted = sorted(result, key=lambda x: x["score"], reverse=True)
-            labels = [r["label"] for r in result_sorted]
-            scores = [r["score"] for r in result_sorted]
-        elif all(isinstance(x, dict) and any(k in x for k in ["label", "entity", "token"]) for x in result):
-            # Handle different key names that might be used
-            for item in result:
-                if "label" in item:
-                    labels.append(item["label"])
-                    scores.append(item.get("score", 0))
-                elif "entity" in item:
-                    labels.append(item["entity"])
-                    scores.append(item.get("score", 0))
-    
-    # Format 2: Single dictionary with label and score
-    elif isinstance(result, dict):
-        if "label" in result and "score" in result:
-            labels = [result["label"]]
-            scores = [result["score"]]
-        # Try to find any keys that might contain the predictions
-        else:
-            for key, value in result.items():
-                if isinstance(value, list) and all(isinstance(x, dict) for x in value):
-                    if all("label" in x and "score" in x for x in value):
-                        result_sorted = sorted(value, key=lambda x: x["score"], reverse=True)
-                        labels = [r["label"] for r in result_sorted]
-                        scores = [r["score"] for r in result_sorted]
-                        break
-    
-    # If we still haven't extracted any labels/scores, return the raw response
+    labels, scores = _normalize_labels_scores(result)
     if not labels or not scores:
         return jsonify({"error": "Could not parse HF API response", "raw": result}), 500
 
-    # Save to database if user is logged in
+    # derived analytics
+    dominant = labels[0]
+    confidence = float(scores[0])
+    entropy = _entropy(scores)
+    valence, arousal = _affect(labels, scores)
+    positivity = (valence + 1.0) / 2.0
+    kw, stats = _keywords(text)
+    suggestions = _suggestions(dominant)
+    prompt = _prompt(dominant)
+
+    # Save to database if user is logged in (keep existing behavior)
     if is_loggedin():
         try:
-            emotion = Emotion(db_connection)  # Initialize your emotion DB class
+            emotion = Emotion(db_connection)
             emotion_data = {
                 "labels": labels,
                 "scores": scores,
-                "raw": json.dumps(result)  # Ensure raw result is JSON-serializable
+                "raw": json.dumps(result),
             }
             emotion.save_emotion_analysis(
-                session["user_id"]["user_id"], 
-                text, 
-                emotion_data
+                session["user_id"]["user_id"],
+                text,
+                emotion_data,
             )
         except Exception as e:
-            # Log the error but don't fail the request
             app.logger.error(f"Failed to save emotion analysis: {str(e)}")
 
-    return jsonify({"labels": labels, "scores": scores, "raw": result})
+    return jsonify(
+        {
+            "labels": labels,
+            "scores": scores,
+            "raw": result,
+            "dominant_emotion": dominant,
+            "confidence": confidence,
+            "entropy": round(entropy, 4),
+            "valence": round(valence, 4),
+            "positivity": round(positivity, 4),
+            "arousal": round(arousal, 4),
+            "keywords": kw,
+            "suggestions": suggestions,
+            "prompt": prompt,
+            "stats": stats,
+            "model": MODEL,
+        }
+    )
 
 
 @app.route('/admin/db-config', methods=['GET', 'POST'])

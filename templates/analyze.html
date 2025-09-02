@@ -1,336 +1,351 @@
 {% extends 'layout.html' %}
 {% block content %}
-
 <head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <div id="home">
-
   {% include 'navbar.html' %}
 
-  <div class="container py-6">
+  <div class="container mx-auto px-4 py-6">
     <!-- Header -->
-    <div class="box mb-6">
-      <h1 class="title is-3 has-text-grey-dark mb-2">Emotion Analysis</h1>
-      <div class="is-flex is-justify-content-space-between is-align-items-center is-flex-wrap-wrap">
-        <p class="has-text-grey">Hi  : <strong>Write something for a full emotional analysis</strong></p>
-
+    <div class="mb-6">
+      <div class="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h1 class="text-2xl font-semibold text-slate-800">Emotion Analytics</h1>
+          <p class="text-slate-500 text-sm">Model: <span class="font-mono">{{ model }}</span></p>
+        </div>
+        <div class="flex items-center gap-2 text-xs text-slate-500">
+          <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+          Live AI Insights
+        </div>
       </div>
     </div>
 
-    <!-- Input Form -->
-    <div class="box mb-6">
+    <!-- Input -->
+    <div class="bg-white rounded-xl shadow border p-4 mb-6">
       <form id="analysisForm" onsubmit="return false;">
-        <div class="field">
-          <label class="label">How are you feeling today?</label>
-          <div class="control">
-            <textarea id="inputText" name="text" placeholder="Type how you feel..." class="textarea"
-              rows="4"></textarea>
-          </div>
-        </div>
-        <div class="field is-grouped is-align-items-center">
-          <div class="control ">
-            <button id="analyzeBtn" type="button" class="button is-info btn-primary">
-              <span class="icon btn-primary">
-                <ion-icon id="analyzeIcon" name="analytics"></ion-icon>
-              </span>
-              <span>Analyze Emotions</span>
-            </button>
-          </div>
-          <span id="status" class="ml-4 has-text-grey is-size-7"></span>
+        <label class="block text-slate-600 text-sm mb-2">How are you feeling today?</label>
+        <textarea id="inputText" name="text" rows="4" placeholder="Type freely about your mood, thoughts, or what happened today..."
+          class="p-4 w-full rounded-lg  text-slate-800"></textarea>
+        <div class="mt-3 flex items-center gap-3">
+          <button id="analyzeBtn" type="button" class="inline-flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+            <svg id="analyzeIcon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 3v1.5M3 12h1.5M3 20.25V21M21 3v1.5M21 12h-1.5M21 20.25V21M7.5 3h9M7.5 21h9M3 7.5h1.5M21 7.5h-1.5M3 16.5h1.5M21 16.5h-1.5" />
+            </svg>
+            Analyze
+          </button>
+          <span id="status" class="text-xs text-slate-500"></span>
         </div>
       </form>
     </div>
 
-    <!-- Charts Section -->
-    <div class="columns">
-      <!-- Current Prediction -->
-      <div class="column">
-        <div class="box">
-          <h3 class="title is-5 has-text-grey-dark mb-4">Current Prediction</h3>
-          <div class="chart-container">
-            <canvas id="barChart"></canvas>
+    <!-- Summary cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+      <div class="bg-white rounded-xl shadow border p-4">
+        <div class="text-xs text-slate-500">Dominant Emotion</div>
+        <div id="domEmotion" class="text-xl font-semibold text-slate-800 mt-1">—</div>
+        <div class="text-xs text-slate-500 mt-2">Confidence: <span id="domConfidence">—</span></div>
+      </div>
+      <div class="bg-white rounded-xl shadow border p-4">
+        <div class="text-xs text-slate-500">Valence (Positivity)</div>
+        <div class="mt-2">
+          <div class="w-full h-2 bg-slate-100 rounded-full">
+            <div id="valenceBar" class="h-2 bg-emerald-500 rounded-full" style="width: 0%"></div>
           </div>
+          <div class="text-xs text-slate-500 mt-1"><span id="valenceText">—</span> (<span id="positivityText">—</span> positive)</div>
         </div>
       </div>
-
-      <!-- Trend Chart -->
-      <div class="column">
-        <div class="box">
-          <h3 class="title is-5 has-text-grey-dark mb-4">Trend (Last Submissions)</h3>
-          <div class="chart-container">
-            <canvas id="lineChart"></canvas>
+      <div class="bg-white rounded-xl shadow border p-4">
+        <div class="text-xs text-slate-500">Arousal (Energy)</div>
+        <div class="mt-2">
+          <div class="w-full h-2 bg-slate-100 rounded-full">
+            <div id="arousalBar" class="h-2 bg-indigo-500 rounded-full" style="width: 0%"></div>
           </div>
+          <div class="text-xs text-slate-500 mt-1" id="arousalText">—</div>
         </div>
+      </div>
+      <div class="bg-white rounded-xl shadow border p-4">
+        <div class="text-xs text-slate-500">Uncertainty</div>
+        <div class="mt-2">
+          <div class="w-full h-2 bg-slate-100 rounded-full">
+            <div id="entropyBar" class="h-2 bg-amber-500 rounded-full" style="width: 0%"></div>
+          </div>
+          <div class="text-xs text-slate-500 mt-1">Entropy: <span id="entropyText">—</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-6">
+      <div class="bg-white rounded-xl shadow border p-4 lg:col-span-2">
+        <div class="text-sm font-semibold text-slate-700 mb-3">Distribution</div>
+        <div class="aspect-[4/3]"><canvas id="barChart"></canvas></div>
+      </div>
+      <div class="bg-white rounded-xl shadow border p-4 lg:col-span-3">
+        <div class="text-sm font-semibold text-slate-700 mb-3">Trend (Last 30)</div>
+        <div class="aspect-[4/3]"><canvas id="lineChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+      <div class="bg-white rounded-xl shadow border p-4">
+        <div class="text-sm font-semibold text-slate-700 mb-3">Emotion Profile</div>
+        <div class="aspect-square"><canvas id="radarChart"></canvas></div>
+      </div>
+      <div class="bg-white rounded-xl shadow border p-4">
+        <div class="text-sm font-semibold text-slate-700 mb-2">Keywords</div>
+        <div id="keywords" class="flex flex-wrap gap-2 text-sm"></div>
+        <div class="text-xs text-slate-500 mt-3" id="textStats">—</div>
+      </div>
+      <div class="bg-white rounded-xl shadow border p-4">
+        <div class="text-sm font-semibold text-slate-700 mb-2">Suggestions</div>
+        <ul id="suggestions" class="list-disc pl-5 space-y-1 text-slate-700 text-sm"></ul>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow border p-4 mb-6">
+      <div class="text-sm font-semibold text-slate-700 mb-2">Guided Journaling Prompt</div>
+      <div id="prompt" class="p-3 rounded-md bg-indigo-50 text-indigo-700 text-sm">—</div>
+    </div>
+
+    <!-- Recent history table -->
+    <div class="bg-white rounded-xl shadow border p-4">
+      <div class="text-sm font-semibold text-slate-700 mb-3">Recent Entries</div>
+      <div class="overflow-auto">
+        <table class="min-w-full text-sm">
+          <thead>
+            <tr class="text-left text-slate-500">
+              <th class="py-2 pr-4">Time</th>
+              <th class="py-2 pr-4">Top Emotion</th>
+              <th class="py-2 pr-4">Confidence</th>
+              <th class="py-2 pr-4">Excerpt</th>
+            </tr>
+          </thead>
+          <tbody id="historyTable"></tbody>
+        </table>
       </div>
     </div>
   </div>
   {% include 'footer.html' %}
 </div>
 
-
 <script>
-  // Wait for the DOM to be fully loaded
   document.addEventListener('DOMContentLoaded', function () {
     const analyzeBtn = document.getElementById('analyzeBtn');
     const inputText = document.getElementById('inputText');
     const status = document.getElementById('status');
     const analyzeIcon = document.getElementById('analyzeIcon');
 
-    let barChart = null;
-    let lineChart = null;
-    const HISTORY_KEY = 'emotion_history_v1';
+    const domEmotion = document.getElementById('domEmotion');
+    const domConfidence = document.getElementById('domConfidence');
+    const valenceBar = document.getElementById('valenceBar');
+    const valenceText = document.getElementById('valenceText');
+    const positivityText = document.getElementById('positivityText');
+    const arousalBar = document.getElementById('arousalBar');
+    const arousalText = document.getElementById('arousalText');
+    const entropyBar = document.getElementById('entropyBar');
+    const entropyText = document.getElementById('entropyText');
+
+    const keywordsDiv = document.getElementById('keywords');
+    const suggestionsUl = document.getElementById('suggestions');
+    const promptDiv = document.getElementById('prompt');
+    const textStatsDiv = document.getElementById('textStats');
+
+    const historyTable = document.getElementById('historyTable');
+
+    let barChart = null; let lineChart = null; let radarChart = null;
+    const HISTORY_KEY = 'emotion_history_v2';
 
     function loadHistory() {
-      try {
-        return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
-      } catch {
-        return [];
-      }
+      try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch { return []; }
     }
+    function saveHistory(h) { localStorage.setItem(HISTORY_KEY, JSON.stringify(h)); }
 
-    function saveHistory(h) {
-      localStorage.setItem(HISTORY_KEY, JSON.stringify(h));
-    }
-
-    function initCharts(labelsPossible = []) {
-      const barCtx = document.getElementById('barChart').getContext('2d');
+    function initBar(labels = []) {
+      const ctx = document.getElementById('barChart').getContext('2d');
       if (barChart) barChart.destroy();
-
-      barChart = new Chart(barCtx, {
+      barChart = new Chart(ctx, {
         type: 'bar',
-        data: {
-          labels: labelsPossible,
-          datasets: [{
-            label: 'Probability',
-            data: labelsPossible.map(() => 0),
-            backgroundColor: [
-              'rgba(72, 95, 199, 0.7)',
-              'rgba(120, 94, 218, 0.7)',
-              'rgba(186, 104, 200, 0.7)',
-              'rgba(247, 143, 30, 0.7)',
-              'rgba(48, 191, 130, 0.7)',
-              'rgba(69, 149, 247, 0.7)'
-            ],
-            borderColor: [
-              'rgb(72, 95, 199)',
-              'rgb(120, 94, 218)',
-              'rgb(186, 104, 200)',
-              'rgb(247, 143, 30)',
-              'rgb(48, 191, 130)',
-              'rgb(69, 149, 247)'
-            ],
-            borderWidth: 1,
-            borderRadius: 6,
-            hoverBackgroundColor: [
-              'rgba(72, 95, 199, 0.9)',
-              'rgba(120, 94, 218, 0.9)',
-              'rgba(186, 104, 200, 0.9)',
-              'rgba(247, 143, 30, 0.9)',
-              'rgba(48, 191, 130, 0.9)',
-              'rgba(69, 149, 247, 0.9)'
-            ]
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            y: {
-              beginAtZero: true,
-              max: 1,
-              ticks: {
-                callback: function (value) {
-                  return (value * 100).toFixed(0) + '%';
-                }
-              }
-            }
-          },
-          plugins: {
-            legend: {
-              display: false
-            },
-            tooltip: {
-              callbacks: {
-                label: function (context) {
-                  return context.dataset.label + ': ' + (context.raw * 100).toFixed(2) + '%';
-                }
-              }
-            }
-          }
+        data: { labels, datasets: [{
+          label: 'Probability', data: labels.map(() => 0),
+          backgroundColor: labels.map((_, i) => `hsl(${(i * 60) % 360} 70% 65% / 0.7)`),
+          borderColor: labels.map((_, i) => `hsl(${(i * 60) % 360} 70% 45% / 1)`),
+          borderWidth: 1, borderRadius: 6
+        }]},
+        options: { responsive: true, maintainAspectRatio: false,
+          scales: { y: { beginAtZero: true, max: 1, ticks: { callback: v => (v * 100).toFixed(0) + '%' } } },
+          plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => (ctx.raw * 100).toFixed(2) + '%' }}}
         }
       });
+    }
 
-      const lineCtx = document.getElementById('lineChart').getContext('2d');
+    function initLine() {
+      const ctx = document.getElementById('lineChart').getContext('2d');
       if (lineChart) lineChart.destroy();
-
-      lineChart = new Chart(lineCtx, {
-        type: 'line',
-        data: {
-          labels: [],
-          datasets: []
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          animation: false,
-          interaction: {
-            mode: 'index',
-            intersect: false
-          },
-          scales: {
-            y: {
-              beginAtZero: true,
-              max: 1,
-              ticks: {
-                callback: function (value) {
-                  return (value * 100).toFixed(0) + '%';
-                }
-              }
-            }
-          },
-          plugins: {
-            tooltip: {
-              callbacks: {
-                label: function (context) {
-                  return context.dataset.label + ': ' + (context.raw * 100).toFixed(2) + '%';
-                }
-              }
-            }
-          }
+      lineChart = new Chart(ctx, {
+        type: 'line', data: { labels: [], datasets: [] },
+        options: { responsive: true, maintainAspectRatio: false, animation: false,
+          interaction: { mode: 'index', intersect: false },
+          scales: { y: { beginAtZero: true, max: 1, ticks: { callback: v => (v * 100).toFixed(0) + '%' } } },
+          plugins: { legend: { display: true }, tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${(ctx.raw * 100).toFixed(2)}%` } } }
         }
       });
     }
 
-    function updateBar(labels, scores) {
-      if (!barChart) initCharts(labels);
-      barChart.data.labels = labels;
-      barChart.data.datasets[0].data = scores;
-      barChart.update();
+    function initRadar(labels = []) {
+      const ctx = document.getElementById('radarChart').getContext('2d');
+      if (radarChart) radarChart.destroy();
+      radarChart = new Chart(ctx, {
+        type: 'radar',
+        data: { labels, datasets: [{
+          label: 'Emotion Profile', data: labels.map(() => 0),
+          fill: true, backgroundColor: 'rgba(99,102,241,0.15)', borderColor: 'rgb(99,102,241)', pointBackgroundColor: 'rgb(99,102,241)'
+        }] },
+        options: { responsive: true, maintainAspectRatio: false,
+          scales: { r: { beginAtZero: true, max: 1, ticks: { display: false }, grid: { color: 'rgba(148,163,184,0.3)' } } },
+          plugins: { legend: { display: false } }
+        }
+      });
     }
 
-    function updateTrendChart(history) {
+    function updateDistribution(labels, scores) {
+      if (!barChart) initBar(labels);
+      if (!radarChart) initRadar(labels);
+      barChart.data.labels = labels; barChart.data.datasets[0].data = scores; barChart.update();
+      radarChart.data.labels = labels; radarChart.data.datasets[0].data = scores; radarChart.update();
+    }
+
+    function updateTrend(history) {
       const last = history.slice(-30);
-      if (!last.length) {
-        lineChart.data.labels = [];
-        lineChart.data.datasets = [];
-        lineChart.update();
-        return;
-      }
+      if (!last.length) { lineChart.data.labels = []; lineChart.data.datasets = []; lineChart.update(); return; }
+      const labelsX = last.map(h => new Date(h.ts).toLocaleTimeString());
+      const emotionLabels = Object.keys(last[0].scores).sort();
 
-      const labelsX = last.map(h => {
-        const d = new Date(h.ts);
-        return d.toLocaleTimeString();
-      });
-
-      const allLabels = Object.keys(last[0].scores).sort();
-
-      // Define a color palette for the line chart
-      const colorPalette = [
-        { border: 'rgb(72, 95, 199)', background: 'rgba(72, 95, 199, 0.1)' },
-        { border: 'rgb(120, 94, 218)', background: 'rgba(120, 94, 218, 0.1)' },
-        { border: 'rgb(186, 104, 200)', background: 'rgba(186, 104, 200, 0.1)' },
-        { border: 'rgb(247, 143, 30)', background: 'rgba(247, 143, 30, 0.1)' },
-        { border: 'rgb(48, 191, 130)', background: 'rgba(48, 191, 130, 0.1)' },
-        { border: 'rgb(69, 149, 247)', background: 'rgba(69, 149, 247, 0.1)' }
+      const palette = [
+        ['#4f46e5', 'rgba(79,70,229,0.1)'], ['#06b6d4', 'rgba(6,182,212,0.1)'],
+        ['#22c55e', 'rgba(34,197,94,0.1)'], ['#f59e0b', 'rgba(245,158,11,0.1)'],
+        ['#ef4444', 'rgba(239,68,68,0.1)'], ['#8b5cf6', 'rgba(139,92,246,0.1)']
       ];
 
-      const datasets = allLabels.map((lbl, idx) => ({
-        label: lbl,
-        data: last.map(h => h.scores[lbl] ?? 0),
-        fill: true,
-        tension: 0.4,
-        borderWidth: 3,
-        borderColor: colorPalette[idx % colorPalette.length].border,
-        backgroundColor: colorPalette[idx % colorPalette.length].background,
-        pointBackgroundColor: colorPalette[idx % colorPalette.length].border,
-        pointBorderColor: '#fff',
-        pointBorderWidth: 2,
-        pointRadius: 4,
-        pointHoverRadius: 6
+      const datasets = emotionLabels.map((lbl, idx) => ({
+        label: lbl, data: last.map(h => h.scores[lbl] ?? 0), fill: true, tension: 0.35,
+        borderWidth: 2.5, borderColor: palette[idx % palette.length][0],
+        backgroundColor: palette[idx % palette.length][1], pointRadius: 2
       }));
 
-      lineChart.data.labels = labelsX;
-      lineChart.data.datasets = datasets;
-      lineChart.update();
+      lineChart.data.labels = labelsX; lineChart.data.datasets = datasets; lineChart.update();
     }
 
-    // Initialize charts on page load
-    (function () {
+    function renderKeywords(kw, stats) {
+      keywordsDiv.innerHTML = '';
+      kw.forEach(k => {
+        const span = document.createElement('span');
+        span.className = 'px-2 py-1 rounded-full bg-slate-100 text-slate-700';
+        span.textContent = `${k.text} · ${(k.score * 100).toFixed(0)}%`;
+        keywordsDiv.appendChild(span);
+      });
+      textStatsDiv.textContent = `Words: ${stats.word_count}, Unique ratio: ${stats.unique_ratio}, Reading time: ${stats.reading_time_min} min`;
+    }
+
+    function renderSuggestions(items) {
+      suggestionsUl.innerHTML = '';
+      items.forEach(s => {
+        const li = document.createElement('li');
+        li.textContent = s; suggestionsUl.appendChild(li);
+      });
+    }
+
+    function renderPrompt(p) { promptDiv.textContent = p; }
+
+    function renderSummary(json) {
+      domEmotion.textContent = json.dominant_emotion || '—';
+      domConfidence.textContent = json.confidence != null ? (json.confidence * 100).toFixed(1) + '%' : '—';
+
+      const valPct = Math.max(0, Math.min(100, ((json.positivity || 0) * 100)));
+      valenceBar.style.width = valPct + '%';
+      valenceText.textContent = json.valence != null ? json.valence.toFixed(2) : '—';
+      positivityText.textContent = json.positivity != null ? (json.positivity * 100).toFixed(0) + '%' : '—';
+
+      const aPct = Math.max(0, Math.min(100, ((json.arousal || 0) * 100)));
+      arousalBar.style.width = aPct + '%';
+      arousalText.textContent = json.arousal != null ? (json.arousal * 100).toFixed(0) + '% energy' : '—';
+
+      const ePct = Math.max(0, Math.min(100, ((json.entropy || 0) * 100)));
+      entropyBar.style.width = ePct + '%';
+      entropyText.textContent = json.entropy != null ? json.entropy.toFixed(2) : '—';
+    }
+
+    function renderHistory(history) {
+      historyTable.innerHTML = '';
+      const last = history.slice(-10).reverse();
+      last.forEach(h => {
+        const tr = document.createElement('tr');
+        const ts = new Date(h.ts);
+        const top = Object.entries(h.scores).sort((a, b) => b[1] - a[1])[0] || ['—', 0];
+        tr.innerHTML = `
+          <td class="py-2 pr-4 text-slate-600">${ts.toLocaleString()}</td>
+          <td class="py-2 pr-4 font-medium text-slate-800">${top[0]}</td>
+          <td class="py-2 pr-4 text-slate-600">${(top[1] * 100).toFixed(1)}%</td>
+          <td class="py-2 pr-4 text-slate-500">${(h.text || '').slice(0, 80)}${(h.text || '').length > 80 ? '…' : ''}</td>
+        `;
+        historyTable.appendChild(tr);
+      });
+    }
+
+    function updateAll(json, text) {
+      const labels = json.labels || []; const scores = json.scores || [];
+      updateDistribution(labels, scores);
+
+      const history = loadHistory();
+      const entryScores = {}; labels.forEach((l, i) => entryScores[l] = +scores[i]);
+      history.push({ ts: Date.now(), scores: entryScores, text });
+      if (history.length > 300) history.shift();
+      saveHistory(history);
+      updateTrend(history);
+      renderHistory(history);
+
+      renderSummary(json);
+      renderKeywords(json.keywords || [], json.stats || { word_count: 0, unique_ratio: 0, reading_time_min: 0 });
+      renderSuggestions(json.suggestions || []);
+      renderPrompt(json.prompt || '');
+    }
+
+    // Initialize charts and history
+    (function init() {
+      initBar([]); initLine(); initRadar([]);
       const history = loadHistory();
       if (history.length) {
         const labels = Object.keys(history[history.length - 1].scores).sort();
-        initCharts(labels);
-        updateTrendChart(history);
-      } else {
-        initCharts([]);
+        updateTrend(history);
+        renderHistory(history);
+        initBar(labels); initRadar(labels);
       }
     })();
 
     analyzeBtn.addEventListener('click', async () => {
       const text = inputText.value.trim();
-      if (!text) {
-        status.textContent = 'Please type something about how you feel.';
-        status.className = 'ml-4 has-text-danger is-size-7';
-        return;
-      }
+      if (!text) { status.textContent = 'Please type something to analyze.'; status.className = 'text-xs text-rose-600'; return; }
 
-      status.textContent = 'Analyzing...';
-      status.className = 'ml-4 has-text-info is-size-7';
-      analyzeBtn.classList.add('is-loading');
-      analyzeBtn.disabled = true;
-
-      // Show loading spinner
-      analyzeIcon.setAttribute('name', 'sync');
-      analyzeIcon.classList.add('loading');
+      status.textContent = 'Analyzing…'; status.className = 'text-xs text-indigo-600';
+      analyzeBtn.classList.add('opacity-70', 'pointer-events-none');
+      analyzeIcon.classList.add('animate-spin');
 
       try {
-        const res = await fetch('/analyze', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text })
-        });
+        const res = await fetch('/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) });
         const json = await res.json();
+        if (!res.ok) { status.textContent = 'Error: ' + (json?.error || res.statusText); status.className = 'text-xs text-rose-600'; return; }
 
-        if (!res.ok) {
-          status.textContent = 'Error: ' + (json?.error || res.statusText);
-          status.className = 'ml-4 has-text-danger is-size-7';
-          analyzeBtn.disabled = false;
-          analyzeBtn.classList.remove('is-loading');
-          analyzeIcon.setAttribute('name', 'analytics');
-          analyzeIcon.classList.remove('loading');
-          return;
-        }
-
-        const labels = json.labels;
-        const scores = json.scores;
-
-        // Convert to map for history entry
-        const entryScores = {};
-        labels.forEach((l, i) => entryScores[l] = +scores[i]);
-
-        updateBar(labels, scores);
-
-        const history = loadHistory();
-        history.push({ ts: Date.now(), scores: entryScores, text });
-        if (history.length > 200) history.shift();
-        saveHistory(history);
-        updateTrendChart(history);
-
-        status.textContent = 'Analysis complete';
-        status.className = 'ml-4 has-text-success is-size-7';
-
-        // Clear input after successful analysis
+        updateAll(json, text);
+        status.textContent = 'Analysis complete'; status.className = 'text-xs text-emerald-600';
         inputText.value = '';
-      } catch (err) {
-        status.textContent = 'Network/client error: ' + err.message;
-        status.className = 'ml-4 has-text-danger is-size-7';
+      } catch (e) {
+        status.textContent = 'Network/client error: ' + e.message; status.className = 'text-xs text-rose-600';
       } finally {
-        analyzeBtn.disabled = false;
-        analyzeBtn.classList.remove('is-loading');
-        analyzeIcon.setAttribute('name', 'analytics');
-        analyzeIcon.classList.remove('loading');
+        analyzeBtn.classList.remove('opacity-70', 'pointer-events-none');
+        analyzeIcon.classList.remove('animate-spin');
       }
     });
   });
