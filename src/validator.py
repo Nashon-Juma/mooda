@@ -49,13 +49,9 @@ def validate_submission_date(form, field):  # pylint: disable=W0613
 
 
 def validate_user_email(form, field):  # pylint: disable=W0613
-    """Validate registered email."""
-    email = field.data
-
-    is_valid = validate_email(email, smtp_timeout=1)
-
-    # if is_valid is False:
-    #     raise ValidationError(f"{email} does not appear to exist")
+    """Validate only that input is not empty."""
+    if not field.data or str(field.data).strip() == "":
+        raise ValidationError("This field cannot be empty")
 
 
 def validate_doctor_key_db(form, field):  # pylint: disable=W0613
