@@ -93,10 +93,7 @@ def home_page():
 @app.route("/analyze", methods=["GET"])
 def analysis_page():
     # Check if user is logged in (optional)
-    if not is_loggedin():  # check if user is authenticated
-        flash("Please log in to use emotion analysis", "info")
-        return redirect("/login")
-    
+   
     # Serve the analysis page with the model name
     data = {
         "doc_title": "Emotion Analysis | Mooda"
