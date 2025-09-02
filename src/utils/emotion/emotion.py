@@ -1,5 +1,6 @@
 # src/utils/emotion/emotion.py
 from datetime import datetime
+import json
 
 class Emotion:
     def __init__(self, db_conn):
@@ -9,7 +10,7 @@ class Emotion:
         """Create emotion analysis table if it doesn't exist"""
         query = """
         CREATE TABLE IF NOT EXISTS emotions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id INTEGER PRIMARY KEY AUTO_INCREMENT,
             user_id INTEGER NOT NULL,
             input_text TEXT NOT NULL,
             emotion_data TEXT NOT NULL,
@@ -23,7 +24,7 @@ class Emotion:
         """Save emotion analysis to database"""
         query = """
         INSERT INTO emotions (user_id, input_text, emotion_data)
-        VALUES (?, ?, ?)
+        VALUES (%s, %s, %s)
         """
         params = (user_id, input_text, json.dumps(emotion_data))
         return self.db_conn.execute_query(query, params)
@@ -33,9 +34,9 @@ class Emotion:
         query = """
         SELECT input_text, emotion_data, created_at 
         FROM emotions 
-        WHERE user_id = ? 
+        WHERE user_id = %s 
         ORDER BY created_at DESC 
-        LIMIT ?
+        LIMIT %s
         """
         params = (user_id, limit)
         return self.db_conn.fetch_all(query, params)
