@@ -730,29 +730,21 @@ def verify_payment():
 @app.route('/payment/webhook', methods=['POST'])
 def payment_webhook():
     """Handle Paystack webhook for payment events"""
-    # Verify webhook signature
+    
+    # Skip verification in development if secret is not set
+    if os.getenv('FLASK_ENV') == 'development' and not os.getenv('PAYSTACK_WEBHOOK_SECRET'):
+        # Process webhook without verification
+        event = request.json
+        # ... your existing webhook processing code
+        return jsonify({"status": "success"})
+    
+    # Normal verification for production
     signature = request.headers.get('x-paystack-signature')
     payload = request.get_data()
     
     if not payment_processor.verify_webhook_signature(payload, signature):
         return jsonify({"status": "error"}), 401
     
-    event = request.json
-    event_type = event.get('event')
-    data = event.get('data')
-    
-    if event_type == 'charge.success':
-        # Handle successful charge
-        reference = data.get('reference')
-        # Update subscription status in database
-        subscription_manager.update_subscription_status(reference, 'active')
-    
-    elif event_type in ['subscription.disable', 'charge.failed']:
-        # Handle failed payments or disabled subscriptions
-        reference = data.get('reference')
-        subscription_manager.update_subscription_status(reference, 'inactive')
-    
-    return jsonify({"status": "success"})
 
 def premium_required(f):
     """Decorator to ensure user has premium subscription"""
