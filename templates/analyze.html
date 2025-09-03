@@ -1,73 +1,94 @@
 {% extends 'layout.html' %}
 {% block content %}
 
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-</head>
+<script src="https://cdn.tailwindcss.com"></script>
+
 <div id="home">
   {% include 'navbar.html' %}
 
   <div class="container mx-auto px-4 py-6">
-    <!-- Header -->
-    <div class="mb-6">
-      <div class="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 class="text-2xl font-semibold text-slate-800">Emotion Analytics</h1>
-          <p class="text-slate-500 text-sm">Model: <span class="font-mono">{{ model }}</span></p>
+    <div class="flex items-center justify-between flex-wrap gap-3 mb-6">
+      <div>
+        <h1 class="text-2xl font-semibold text-slate-900 flex items-center gap-2">
+          <span id="pageEmoji">🌀</span>
+          Emotion Studio
+        </h1>
+        <p class="text-slate-600 text-sm">Model: <span class="font-mono">{{ model }}</span></p>
+      </div>
+      <div class="flex items-center gap-3 text-xs text-slate-600">
+        <div class="flex items-center gap-2">
+          <button id="musicToggle"
+            class="px-3 py-1.5 rounded-md bg-white/70 hover:bg-white shadow border text-slate-700"
+            aria-label="Toggle ambient music">🎵 Ambient</button>
+          <input id="musicVolume" type="range" min="0" max="1" step="0.01" value="0.25" class="w-28"
+            aria-label="Music volume">
         </div>
-        <div class="flex items-center gap-2 text-xs text-slate-500">
-          <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-          Live AI Insights
-        </div>
+        <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse" aria-hidden="true"></div>
+        Live AI Insights
       </div>
     </div>
 
-    <!-- Input -->
-    <div class="bg-white rounded-xl shadow border p-4 mb-6">
-      <form id="analysisForm" onsubmit="return false;">
-        <label class="block text-slate-600 text-sm mb-2">How are you feeling today?</label>
-        <textarea id="inputText" name="text" rows="4"
-          placeholder="Type freely about your mood, thoughts, or what happened today..." style="width: 100%; 
-                        padding: 1rem; 
-                        border-radius: 0.5rem; 
-                        border: 1px solid rgb(199, 179, 179); 
-                        outline: none; 
-                        color: rgb(30, 41, 59); 
-                        box-sizing: border-box;"
-          onfocus="this.style.borderColor='black'; this.style.boxShadow='0 0 0 1px black';"
-          onblur="this.style.borderColor='black'; this.style.boxShadow='none';">
-        </textarea>
-
-        <div class="mt-3 flex items-center gap-3">
-          <button id="analyzeBtn" type="button"
-            class="inline-flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-md text-sm font-medium">
-            <svg id="analyzeIcon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
-              stroke="currentColor" class="w-5 h-5">
-              <path stroke-linecap="round" stroke-linejoin="round"
-                d="M3 3v1.5M3 12h1.5M3 20.25V21M21 3v1.5M21 12h-1.5M21 20.25V21M7.5 3h9M7.5 21h9M3 7.5h1.5M21 7.5h-1.5M3 16.5h1.5M21 16.5h-1.5" />
-            </svg>
-            Analyze
-          </button>
-          <span id="status" class="text-xs text-slate-500"></span>
+    <!-- Input and breathing row -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+      <div class="lg:col-span-2 bg-white rounded-xl shadow border p-4">
+        <form id="analysisForm" onsubmit="return false;" aria-label="Emotion analysis form">
+          <label class="block text-slate-700 text-sm mb-2" for="inputText">How are you feeling? Write freely.</label>
+          <textarea id="inputText" name="text" rows="5" placeholder="Type about your mood, events, thoughts..."
+            class="w-full p-3 rounded-md border outline-none text-slate-800 focus:ring-2 focus:ring-black"
+            aria-label="Your feelings input"></textarea>
+          <div class="mt-3 flex items-center gap-3 flex-wrap">
+            <button id="analyzeBtn" type="button"
+              class="inline-flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+              aria-label="Analyze text">
+              <svg id="analyzeIcon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                stroke-width="1.5" stroke="currentColor" class="w-5 h-5" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M3 3v1.5M3 12h1.5M3 20.25V21M21 3v1.5M21 12h-1.5M21 20.25V21M7.5 3h9M7.5 21h9M3 7.5h1.5M21 7.5h-1.5M3 16.5h1.5M21 16.5h-1.5" />
+              </svg>
+              Analyze (Enter)
+            </button>
+            <button id="saveJournalBtn" type="button"
+              class="inline-flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-800 px-4 py-2 rounded-md text-sm font-medium border"
+              aria-label="Quick save to journal">
+              💾 Quick Save to Journal (Ctrl/Cmd+S)
+            </button>
+            <span id="status" class="text-xs text-slate-600" role="status">Ready</span>
+          </div>
+          <div class="mt-2 text-[11px] text-slate-500">Shortcuts: Enter = Analyze, Ctrl/Cmd+S = Quick Save, M = Toggle
+            Music, B = Breathing</div>
+        </form>
+      </div>
+      <div class="bg-white rounded-xl shadow border p-4 flex flex-col items-center justify-center">
+        <div class="text-sm font-medium text-slate-700 mb-2">Breathing Guide</div>
+        <div class="relative w-40 h-40" aria-live="polite">
+          <div id="breathingCircle" class="absolute inset-0 rounded-full"
+            style="background: radial-gradient(circle at 30% 30%, rgba(99,102,241,0.25), rgba(99,102,241,0.1)); transform: scale(0.8);">
+          </div>
+          <div class="absolute inset-0 flex items-center justify-center">
+            <div id="breathingLabel" class="text-slate-700 text-sm">Tap Analyze</div>
+          </div>
         </div>
-      </form>
+        <button id="breathingToggle" class="mt-3 text-xs px-3 py-1.5 rounded-md bg-slate-900 text-white"
+          aria-label="Toggle breathing guide">Start
+          (B)</button>
+      </div>
     </div>
 
-    <!-- Summary cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+    <!-- Summary and actions -->
+    <div class="grid grid-cols-1 xl:grid-cols-4 gap-4 mb-6">
       <div class="bg-white rounded-xl shadow border p-4">
         <div class="text-xs text-slate-500">Dominant Emotion</div>
-        <div id="domEmotion" class="text-xl font-semibold text-slate-800 mt-1">—</div>
+        <div class="text-xl font-semibold text-slate-900 mt-1 flex items-center gap-2">
+          <span id="domEmoji">🌀</span>
+          <span id="domEmotion">—</span>
+        </div>
         <div class="text-xs text-slate-500 mt-2">Confidence: <span id="domConfidence">—</span></div>
       </div>
       <div class="bg-white rounded-xl shadow border p-4">
         <div class="text-xs text-slate-500">Valence (Positivity)</div>
         <div class="mt-2">
           <div class="w-full h-2 bg-slate-100 rounded-full">
-            <div id="valenceBar" class="h-2 bg-emerald-500 rounded-full" style="width: 0%"></div>
+            <div id="valenceBar" class="h-2 rounded-full" style="width: 0%; background:#10b981"></div>
           </div>
           <div class="text-xs text-slate-500 mt-1"><span id="valenceText">—</span> (<span id="positivityText">—</span>
             positive)</div>
@@ -93,32 +114,69 @@
       </div>
     </div>
 
+    <!-- Advanced insights and actions -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+      <div class="bg-white rounded-xl shadow border p-4">
+        <div class="text-sm font-semibold text-slate-800 mb-2">Micro-actions</div>
+        <ul id="microActions" class="list-disc pl-5 space-y-1 text-slate-700 text-sm"></ul>
+      </div>
+      <div class="bg-white rounded-xl shadow border p-4">
+        <div class="text-sm font-semibold text-slate-800 mb-2">Guided Prompt</div>
+        <div id="prompt" class="p-3 rounded-md bg-indigo-50 text-indigo-700 text-sm">—</div>
+      </div>
+      <div class="bg-white rounded-xl shadow border p-4">
+        <div class="text-sm font-semibold text-slate-800 mb-2">Keywords</div>
+        <div id="keywords" class="flex flex-wrap gap-2 text-sm"></div>
+        <div class="text-xs text-slate-500 mt-3" id="textStats">—</div>
+      </div>
+    </div>
+
     <!-- Charts -->
     <div class="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-6">
       <div class="bg-white rounded-xl shadow border p-4 lg:col-span-2">
-        <div class="text-sm font-semibold text-slate-700 mb-3">Distribution</div>
-        <div class="aspect-[4/3]"><canvas id="barChart"></canvas></div>
+        <div class="text-sm font-semibold text-slate-800 mb-3">Distribution</div>
+        <div class="aspect-[4/3]"><canvas id="barChart" aria-label="Distribution chart" role="img"></canvas></div>
       </div>
       <div class="bg-white rounded-xl shadow border p-4 lg:col-span-3">
-        <div class="text-sm font-semibold text-slate-700 mb-3">Trend (Last 30)</div>
-        <div class="aspect-[4/3]"><canvas id="lineChart"></canvas></div>
+        <div class="text-sm font-semibold text-slate-800 mb-3">Trend (Last 30)</div>
+        <div class="aspect-[4/3]"><canvas id="lineChart" aria-label="Trend chart" role="img"></canvas></div>
       </div>
     </div>
 
     {% if session.get('user_id') %}
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
       <div class="bg-white rounded-xl shadow border p-4">
-        <div class="text-sm font-semibold text-slate-700 mb-3">Emotion Profile</div>
-        <div class="aspect-square"><canvas id="radarChart"></canvas></div>
+        <div class="text-sm font-semibold text-slate-800 mb-3">Emotion Profile</div>
+        <div class="aspect-square"><canvas id="radarChart" aria-label="Emotion profile chart" role="img"></canvas></div>
       </div>
       <div class="bg-white rounded-xl shadow border p-4">
-        <div class="text-sm font-semibold text-slate-700 mb-2">Keywords</div>
-        <div id="keywords" class="flex flex-wrap gap-2 text-sm"></div>
-        <div class="text-xs text-slate-500 mt-3" id="textStats">—</div>
+        <div class="text-sm font-semibold text-slate-800 mb-2">Progress</div>
+        <div class="grid grid-cols-3 gap-3 text-center">
+          <div class="p-3 rounded-lg bg-slate-50">
+            <div class="text-xs text-slate-500">Today</div>
+            <div id="progToday" class="text-xl font-semibold text-slate-900">0</div>
+          </div>
+          <div class="p-3 rounded-lg bg-slate-50">
+            <div class="text-xs text-slate-500">Total</div>
+            <div id="progTotal" class="text-xl font-semibold text-slate-900">0</div>
+          </div>
+          <div class="p-3 rounded-lg bg-slate-50">
+            <div class="text-xs text-slate-500">Streak</div>
+            <div id="progStreak" class="text-xl font-semibold text-slate-900">0</div>
+          </div>
+        </div>
       </div>
       <div class="bg-white rounded-xl shadow border p-4">
-        <div class="text-sm font-semibold text-slate-700 mb-2">Suggestions</div>
-        <ul id="suggestions" class="list-disc pl-5 space-y-1 text-slate-700 text-sm"></ul>
+        <div class="text-sm font-semibold text-slate-800 mb-2">Shareable Card</div>
+        <div id="shareCard" class="p-4 rounded-lg" style="background: linear-gradient(135deg,#e0e7ff,#c7d2fe,#a5b4fc)">
+          <div class="text-sm text-slate-800/80">Today I felt</div>
+          <div class="text-2xl font-bold text-slate-900 flex items-center gap-2"><span id="cardEmoji">🌀</span><span
+              id="cardEmotion">—</span></div>
+          <div class="text-xs text-slate-700 mt-1">Confidence: <span id="cardConfidence">—</span></div>
+          <div class="mt-2 flex flex-wrap gap-1" id="cardKeywords"></div>
+        </div>
+        <button id="exportCardBtn" class="mt-3 text-xs px-3 py-1.5 rounded-md bg-slate-900 text-white">Download
+          PNG</button>
       </div>
     </div>
     {% else %}
@@ -126,39 +184,49 @@
       <div class="pointer-events-none select-none">
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 blur-[3px]">
           <div class="bg-white rounded-xl shadow border p-4">
-            <div class="text-sm font-semibold text-slate-700 mb-3">Emotion Profile</div>
+            <div class="text-sm font-semibold text-slate-800 mb-3">Emotion Profile</div>
             <div class="aspect-square"><canvas id="radarChart"></canvas></div>
           </div>
           <div class="bg-white rounded-xl shadow border p-4">
-            <div class="text-sm font-semibold text-slate-700 mb-2">Keywords</div>
-            <div id="keywords" class="flex flex-wrap gap-2 text-sm"></div>
-            <div class="text-xs text-slate-500 mt-3" id="textStats">—</div>
+            <div class="text-sm font-semibold text-slate-800 mb-2">Progress</div>
+            <div class="grid grid-cols-3 gap-3 text-center">
+              <div class="p-3 rounded-lg bg-slate-50">
+                <div class="text-xs text-slate-500">Today</div>
+                <div class="text-xl font-semibold">—</div>
+              </div>
+              <div class="p-3 rounded-lg bg-slate-50">
+                <div class="text-xs text-slate-500">Total</div>
+                <div class="text-xl font-semibold">—</div>
+              </div>
+              <div class="p-3 rounded-lg bg-slate-50">
+                <div class="text-xs text-slate-500">Streak</div>
+                <div class="text-xl font-semibold">—</div>
+              </div>
+            </div>
           </div>
           <div class="bg-white rounded-xl shadow border p-4">
-            <div class="text-sm font-semibold text-slate-700 mb-2">Suggestions</div>
-            <ul id="suggestions" class="list-disc pl-5 space-y-1 text-slate-700 text-sm"></ul>
+            <div class="text-sm font-semibold text-slate-800 mb-2">Shareable Card</div>
+            <div class="p-4 rounded-lg" style="background: linear-gradient(135deg,#e0e7ff,#c7d2fe,#a5b4fc)">
+              <div class="text-2xl font-bold text-slate-900">—</div>
+            </div>
           </div>
         </div>
       </div>
       <div class="absolute inset-0 flex items-center justify-center">
         <div class="bg-white/90 backdrop-blur rounded-lg shadow px-4 py-3 text-center">
-          <div class="text-sm text-slate-700 font-medium">Log in to unlock Emotion Profile, Keywords and Suggestions
+          <div class="text-sm text-slate-700 font-medium">Log in to unlock Progress, Emotion Profile and Shareable
+            Cards
           </div>
           <a href="{{ url_for('login') }}"
-            class="mt-2 inline-block bg-teal-600 hover:bg-teal-700 text-white px-3 py-1.5 rounded text-sm">Login</a>
+            class="mt-2 inline-block bg-black hover:bg-slate-900 text-white px-3 py-1.5 rounded text-sm">Login</a>
         </div>
       </div>
     </div>
     {% endif %}
 
-    <div class="bg-white rounded-xl shadow border p-4 mb-6">
-      <div class="text-sm font-semibold text-slate-700 mb-2">Guided Journaling Prompt</div>
-      <div id="prompt" class="p-3 rounded-md bg-indigo-50 text-indigo-700 text-sm">—</div>
-    </div>
-
     <!-- Recent history table -->
     <div class="bg-white rounded-xl shadow border p-4">
-      <div class="text-sm font-semibold text-slate-700 mb-3">Recent Entries</div>
+      <div class="text-sm font-semibold text-slate-800 mb-3">Recent Entries</div>
       <div class="overflow-auto">
         <table class="min-w-full text-sm">
           <thead>
@@ -175,7 +243,14 @@
     </div>
   </div>
   {% include 'footer.html' %}
+
+  <audio id="ambientAudio" preload="auto" src=""></audio>
 </div>
+
+<!-- Libraries moved to bottom for performance -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 
 <script>
   document.addEventListener('DOMContentLoaded', function () {
@@ -186,6 +261,8 @@
 
     const domEmotion = document.getElementById('domEmotion');
     const domConfidence = document.getElementById('domConfidence');
+    const domEmoji = document.getElementById('domEmoji');
+
     const valenceBar = document.getElementById('valenceBar');
     const valenceText = document.getElementById('valenceText');
     const positivityText = document.getElementById('positivityText');
@@ -195,19 +272,66 @@
     const entropyText = document.getElementById('entropyText');
 
     const keywordsDiv = document.getElementById('keywords');
-    const suggestionsUl = document.getElementById('suggestions');
+    const microActionsUl = document.getElementById('microActions');
     const promptDiv = document.getElementById('prompt');
     const textStatsDiv = document.getElementById('textStats');
 
     const historyTable = document.getElementById('historyTable');
 
-    let barChart = null; let lineChart = null; let radarChart = null;
-    const HISTORY_KEY = 'emotion_history_v2';
+    const pageRoot = document.getElementById('pageRoot');
+    const pageEmoji = document.getElementById('pageEmoji');
 
-    function loadHistory() {
+    const shareCard = document.getElementById('shareCard');
+    const exportCardBtn = document.getElementById('exportCardBtn');
+    const cardEmoji = document.getElementById('cardEmoji');
+    const cardEmotion = document.getElementById('cardEmotion');
+    const cardConfidence = document.getElementById('cardConfidence');
+    const cardKeywords = document.getElementById('cardKeywords');
+
+    const progToday = document.getElementById('progToday');
+    const progTotal = document.getElementById('progTotal');
+    const progStreak = document.getElementById('progStreak');
+
+    const audio = document.getElementById('ambientAudio');
+    const musicToggle = document.getElementById('musicToggle');
+    const musicVolume = document.getElementById('musicVolume');
+
+    const breathingCircle = document.getElementById('breathingCircle');
+    const breathingLabel = document.getElementById('breathingLabel');
+    const breathingToggle = document.getElementById('breathingToggle');
+
+    let barChart = null; let lineChart = null; let radarChart = null;
+    const HISTORY_KEY = 'emotion_history_v3';
+    let lastResult = null; // store last analysis for quick journal save
+    let breathingTimer = null; let breathingCfg = { inhale: 3500, exhale: 3500 };
+
+    function loadHistoryLS() {
       try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch { return []; }
     }
-    function saveHistory(h) { localStorage.setItem(HISTORY_KEY, JSON.stringify(h)); }
+    function saveHistoryLS(h) { localStorage.setItem(HISTORY_KEY, JSON.stringify(h)); }
+
+    function setTheme(theme, emoji) {
+      try {
+        if (theme?.gradient) pageRoot.style.background = theme.gradient;
+        if (theme?.primary) {
+          valenceBar.style.background = theme.primary;
+          if (shareCard) {
+            shareCard.style.background = theme.gradient || shareCard.style.background;
+          }
+        }
+        if (emoji) {
+          pageEmoji.textContent = emoji;
+          domEmoji.textContent = emoji;
+          if (cardEmoji) cardEmoji.textContent = emoji;
+        }
+      } catch { }
+    }
+
+    function startConfetti() {
+      try {
+        confetti({ particleCount: 120, spread: 70, origin: { y: 0.6 } });
+      } catch { }
+    }
 
     function initBar(labels = []) {
       const ctx = document.getElementById('barChart').getContext('2d');
@@ -245,16 +369,12 @@
     }
 
     function initRadar(labels = []) {
-      const ctx = document.getElementById('radarChart').getContext('2d');
+      const ctx = document.getElementById('radarChart')?.getContext('2d');
+      if (!ctx) return; // when logged-out, it's blurred but exists
       if (radarChart) radarChart.destroy();
       radarChart = new Chart(ctx, {
         type: 'radar',
-        data: {
-          labels, datasets: [{
-            label: 'Emotion Profile', data: labels.map(() => 0),
-            fill: true, backgroundColor: 'rgba(99,102,241,0.15)', borderColor: 'rgb(99,102,241)', pointBackgroundColor: 'rgb(99,102,241)'
-          }]
-        },
+        data: { labels, datasets: [{ label: 'Emotion Profile', data: labels.map(() => 0), fill: true, backgroundColor: 'rgba(99,102,241,0.15)', borderColor: 'rgb(99,102,241)', pointBackgroundColor: 'rgb(99,102,241)' }] },
         options: {
           responsive: true, maintainAspectRatio: false,
           scales: { r: { beginAtZero: true, max: 1, ticks: { display: false }, grid: { color: 'rgba(148,163,184,0.3)' } } },
@@ -265,9 +385,8 @@
 
     function updateDistribution(labels, scores) {
       if (!barChart) initBar(labels);
-      if (!radarChart) initRadar(labels);
       barChart.data.labels = labels; barChart.data.datasets[0].data = scores; barChart.update();
-      radarChart.data.labels = labels; radarChart.data.datasets[0].data = scores; radarChart.update();
+      if (radarChart) { radarChart.data.labels = labels; radarChart.data.datasets[0].data = scores; radarChart.update(); }
     }
 
     function updateTrend(history) {
@@ -275,59 +394,102 @@
       if (!last.length) { lineChart.data.labels = []; lineChart.data.datasets = []; lineChart.update(); return; }
       const labelsX = last.map(h => new Date(h.ts).toLocaleTimeString());
       const emotionLabels = Object.keys(last[0].scores).sort();
-
-      const palette = [
-        ['#4f46e5', 'rgba(79,70,229,0.1)'], ['#06b6d4', 'rgba(6,182,212,0.1)'],
-        ['#22c55e', 'rgba(34,197,94,0.1)'], ['#f59e0b', 'rgba(245,158,11,0.1)'],
-        ['#ef4444', 'rgba(239,68,68,0.1)'], ['#8b5cf6', 'rgba(139,92,246,0.1)']
-      ];
-
-      const datasets = emotionLabels.map((lbl, idx) => ({
-        label: lbl, data: last.map(h => h.scores[lbl] ?? 0), fill: true, tension: 0.35,
-        borderWidth: 2.5, borderColor: palette[idx % palette.length][0],
-        backgroundColor: palette[idx % palette.length][1], pointRadius: 2
-      }));
-
+      const palette = [['#4f46e5', 'rgba(79,70,229,0.1)'], ['#06b6d4', 'rgba(6,182,212,0.1)'], ['#22c55e', 'rgba(34,197,94,0.1)'], ['#f59e0b', 'rgba(245,158,11,0.1)'], ['#ef4444', 'rgba(239,68,68,0.1)'], ['#8b5cf6', 'rgba(139,92,246,0.1)']];
+      const datasets = emotionLabels.map((lbl, idx) => ({ label: lbl, data: last.map(h => h.scores[lbl] ?? 0), fill: true, tension: 0.35, borderWidth: 2.5, borderColor: palette[idx % palette.length][0], backgroundColor: palette[idx % palette.length][1], pointRadius: 2 }));
       lineChart.data.labels = labelsX; lineChart.data.datasets = datasets; lineChart.update();
     }
 
     function renderKeywords(kw, stats) {
       keywordsDiv.innerHTML = '';
-      kw.forEach(k => {
+      (kw || []).forEach(k => {
         const span = document.createElement('span');
         span.className = 'px-2 py-1 rounded-full bg-slate-100 text-slate-700';
         span.textContent = `${k.text} · ${(k.score * 100).toFixed(0)}%`;
         keywordsDiv.appendChild(span);
       });
-      textStatsDiv.textContent = `Words: ${stats.word_count}, Unique ratio: ${stats.unique_ratio}, Reading time: ${stats.reading_time_min} min`;
+      textStatsDiv.textContent = `Words: ${stats?.word_count ?? 0}, Unique: ${stats?.unique_ratio ?? 0}, Read time: ${stats?.reading_time_min ?? 0} min`;
     }
 
-    function renderSuggestions(items) {
-      suggestionsUl.innerHTML = '';
-      items.forEach(s => {
-        const li = document.createElement('li');
-        li.textContent = s; suggestionsUl.appendChild(li);
-      });
+    function renderMicroActions(items) {
+      microActionsUl.innerHTML = '';
+      (items || []).forEach(s => { const li = document.createElement('li'); li.textContent = s; microActionsUl.appendChild(li); });
     }
-
-    function renderPrompt(p) { promptDiv.textContent = p; }
 
     function renderSummary(json) {
-      domEmotion.textContent = json.dominant_emotion || '—';
-      domConfidence.textContent = json.confidence != null ? (json.confidence * 100).toFixed(1) + '%' : '—';
+      const { dominant_emotion, confidence, positivity, valence, arousal, entropy, emoji, theme, progress } = json;
+      domEmotion.textContent = dominant_emotion || '—';
+      domConfidence.textContent = confidence != null ? (confidence * 100).toFixed(1) + '%' : '—';
+      if (emoji) { domEmoji.textContent = emoji; pageEmoji.textContent = emoji; if (cardEmoji) cardEmoji.textContent = emoji; }
 
-      const valPct = Math.max(0, Math.min(100, ((json.positivity || 0) * 100)));
+      const valPct = Math.max(0, Math.min(100, ((positivity || 0) * 100)));
       valenceBar.style.width = valPct + '%';
-      valenceText.textContent = json.valence != null ? json.valence.toFixed(2) : '—';
-      positivityText.textContent = json.positivity != null ? (json.positivity * 100).toFixed(0) + '%' : '—';
+      valenceText.textContent = valence != null ? valence.toFixed(2) : '—';
+      positivityText.textContent = positivity != null ? (positivity * 100).toFixed(0) + '%' : '—';
 
-      const aPct = Math.max(0, Math.min(100, ((json.arousal || 0) * 100)));
+      const aPct = Math.max(0, Math.min(100, ((arousal || 0) * 100)));
       arousalBar.style.width = aPct + '%';
-      arousalText.textContent = json.arousal != null ? (json.arousal * 100).toFixed(0) + '% energy' : '—';
+      arousalText.textContent = arousal != null ? (arousal * 100).toFixed(0) + '% energy' : '—';
 
-      const ePct = Math.max(0, Math.min(100, ((json.entropy || 0) * 100)));
+      const ePct = Math.max(0, Math.min(100, ((entropy || 0) * 100)));
       entropyBar.style.width = ePct + '%';
-      entropyText.textContent = json.entropy != null ? json.entropy.toFixed(2) : '—';
+      entropyText.textContent = entropy != null ? entropy.toFixed(2) : '—';
+
+      setTheme(theme, json.emoji);
+
+      // progress
+      if (progToday && progress) {
+        progToday.textContent = progress.today_entries ?? 0;
+        progTotal.textContent = progress.total_entries ?? 0;
+        progStreak.textContent = progress.streak_days ?? 0;
+      }
+
+      // confetti triggers
+      if ((positivity || 0) > 0.7 || (progress?.streak_days || 0) >= 7) startConfetti();
+
+      // update share card
+      if (cardEmotion) cardEmotion.textContent = dominant_emotion || '—';
+      if (cardConfidence) cardConfidence.textContent = confidence != null ? (confidence * 100).toFixed(1) + '%' : '—';
+      if (cardKeywords) cardKeywords.innerHTML = '';
+    }
+
+    function updateAll(json, text) {
+      const labels = json.labels || []; const scores = json.scores || [];
+      updateDistribution(labels, scores);
+      if (!radarChart && document.getElementById('radarChart')) initRadar(labels);
+      if (radarChart) { radarChart.data.labels = labels; radarChart.data.datasets[0].data = scores; radarChart.update(); }
+
+      const history = loadHistoryLS();
+      const entryScores = {}; labels.forEach((l, i) => entryScores[l] = +scores[i]);
+      history.push({ ts: Date.now(), scores: entryScores, text });
+      if (history.length > 300) history.shift();
+      saveHistoryLS(history);
+      updateTrend(history);
+      renderHistory(history);
+
+      renderSummary(json);
+      renderKeywords(json.keywords || [], json.stats || { word_count: 0, unique_ratio: 0, reading_time_min: 0 });
+      renderMicroActions(json.micro_actions || json.suggestions || []);
+      promptDiv.textContent = json.prompt || '';
+
+      // Set music URL
+      try { if (json.music?.url) audio.src = json.music.url; } catch { }
+
+      // Update share card keywords
+      if (cardKeywords) {
+        (json.keywords || []).slice(0, 6).forEach(k => {
+          const s = document.createElement('span'); s.className = 'px-2 py-1 rounded-full bg-white/60 text-slate-900 text-xs'; s.textContent = k.text; cardKeywords.appendChild(s);
+        });
+      }
+
+      // Update breathing config
+      try {
+        const inh = json?.breathing?.inhale_ms || 3500; const exh = json?.breathing?.exhale_ms || 3500;
+        breathingCfg = { inhale: inh, exhale: exh };
+        breathingLabel.textContent = 'Ready';
+      } catch { }
+
+      // Store last result for quick save
+      lastResult = { text, dominant: json.dominant_emotion, emoji: json.emoji };
     }
 
     function renderHistory(history) {
@@ -339,7 +501,7 @@
         const top = Object.entries(h.scores).sort((a, b) => b[1] - a[1])[0] || ['—', 0];
         tr.innerHTML = `
           <td class="py-2 pr-4 text-slate-600">${ts.toLocaleString()}</td>
-          <td class="py-2 pr-4 font-medium text-slate-800">${top[0]}</td>
+          <td class="py-2 pr-4 font-medium text-slate-900">${top[0]}</td>
           <td class="py-2 pr-4 text-slate-600">${(top[1] * 100).toFixed(1)}%</td>
           <td class="py-2 pr-4 text-slate-500">${(h.text || '').slice(0, 80)}${(h.text || '').length > 80 ? '…' : ''}</td>
         `;
@@ -347,58 +509,126 @@
       });
     }
 
-    function updateAll(json, text) {
-      const labels = json.labels || []; const scores = json.scores || [];
-      updateDistribution(labels, scores);
-
-      const history = loadHistory();
-      const entryScores = {}; labels.forEach((l, i) => entryScores[l] = +scores[i]);
-      history.push({ ts: Date.now(), scores: entryScores, text });
-      if (history.length > 300) history.shift();
-      saveHistory(history);
-      updateTrend(history);
-      renderHistory(history);
-
-      renderSummary(json);
-      renderKeywords(json.keywords || [], json.stats || { word_count: 0, unique_ratio: 0, reading_time_min: 0 });
-      renderSuggestions(json.suggestions || []);
-      renderPrompt(json.prompt || '');
+    function fadeAudio(toVol = 0, ms = 800) {
+      const steps = 20; const from = audio.volume; const dv = (toVol - from) / steps; const dt = ms / steps;
+      let i = 0; const t = setInterval(() => { i++; const v = Math.min(1, Math.max(0, from + dv * i)); audio.volume = v; if (i >= steps) clearInterval(t); }, dt);
     }
 
     // Initialize charts and history
     (function init() {
-      initBar([]); initLine(); initRadar([]);
-      const history = loadHistory();
+      initBar([]); initLine(); if (document.getElementById('radarChart')) initRadar([]);
+      const history = loadHistoryLS();
       if (history.length) {
         const labels = Object.keys(history[history.length - 1].scores).sort();
-        updateTrend(history);
-        renderHistory(history);
-        initBar(labels); initRadar(labels);
+        updateTrend(history); renderHistory(history); initBar(labels); if (radarChart) initRadar(labels);
       }
+
+      // preload audio volume
+      audio.volume = parseFloat(musicVolume.value || '0.25');
+      musicVolume.addEventListener('input', () => { audio.volume = parseFloat(musicVolume.value); });
+
+      // Fetch server history if logged in (merges silently)
+      fetch('/analyze/history').then(r => r.json()).then(rows => {
+        if (!Array.isArray(rows) || !rows.length) return;
+        const h = loadHistoryLS();
+        rows.slice(0, 30).forEach(rec => {
+          const dt = new Date(rec.created_at || Date.now());
+          const data = rec.data || {}; const labels = data.labels || []; const scores = data.scores || [];
+          const entryScores = {}; labels.forEach((l, i) => entryScores[l] = +scores[i]);
+          h.push({ ts: dt.getTime(), scores: entryScores, text: rec.text || '' });
+        });
+        if (h.length > 300) h.splice(0, h.length - 300);
+        saveHistoryLS(h); updateTrend(h); renderHistory(h);
+      }).catch(() => { });
     })();
 
-    analyzeBtn.addEventListener('click', async () => {
-      const text = inputText.value.trim();
+    async function doAnalyze() {
+      const text = (inputText.value || '').trim();
       if (!text) { status.textContent = 'Please type something to analyze.'; status.className = 'text-xs text-rose-600'; return; }
-
       status.textContent = 'Analyzing…'; status.className = 'text-xs text-indigo-600';
-      analyzeBtn.classList.add('opacity-70', 'pointer-events-none');
-      analyzeIcon.classList.add('animate-spin');
-
+      analyzeBtn.classList.add('opacity-70', 'pointer-events-none'); analyzeIcon.classList.add('animate-spin');
       try {
         const res = await fetch('/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) });
         const json = await res.json();
         if (!res.ok) { status.textContent = 'Error: ' + (json?.error || res.statusText); status.className = 'text-xs text-rose-600'; return; }
-
         updateAll(json, text);
         status.textContent = 'Analysis complete'; status.className = 'text-xs text-emerald-600';
         inputText.value = '';
       } catch (e) {
         status.textContent = 'Network/client error: ' + e.message; status.className = 'text-xs text-rose-600';
       } finally {
-        analyzeBtn.classList.remove('opacity-70', 'pointer-events-none');
-        analyzeIcon.classList.remove('animate-spin');
+        analyzeBtn.classList.remove('opacity-70', 'pointer-events-none'); analyzeIcon.classList.remove('animate-spin');
       }
+    }
+
+    async function quickSaveJournal() {
+      if (!lastResult || !lastResult.text) { status.textContent = 'Nothing to save yet. Analyze first.'; status.className = 'text-xs text-rose-600'; return; }
+      try {
+        const title = `Emotion Reflection — ${lastResult.dominant || 'Today'}`;
+        const res = await fetch('/analyze/save-journal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: lastResult.text, title }) });
+        const json = await res.json();
+        if (json.status) { status.textContent = 'Saved to Journal'; status.className = 'text-xs text-emerald-600'; startConfetti(); }
+        else { status.textContent = 'Please log in' + (json.message ? ': ' + json.message : ''); status.className = 'text-xs text-rose-600'; }
+      } catch (e) { status.textContent = 'Save error: ' + e.message; status.className = 'text-xs text-rose-600'; }
+    }
+
+    function toggleMusic() {
+      try {
+        if (!audio.src) return; // wait until first analysis sets URL
+        if (audio.paused) { audio.play(); musicToggle.textContent = '⏸️ Pause'; fadeAudio(parseFloat(musicVolume.value || '0.25'), 600); }
+        else { fadeAudio(0, 500); setTimeout(() => audio.pause(), 520); musicToggle.textContent = '🎵 Ambient'; }
+      } catch { }
+    }
+
+    function startBreathing() {
+      if (breathingTimer) return; // already running
+      let phase = 'inhale';
+      breathingLabel.textContent = 'Inhale';
+      breathingCircle.style.transition = `transform ${breathingCfg.inhale}ms ease-in-out`;
+      breathingCircle.style.transform = 'scale(1.05)';
+      breathingTimer = setInterval(() => {
+        if (phase === 'inhale') {
+          phase = 'exhale'; breathingLabel.textContent = 'Exhale';
+          breathingCircle.style.transition = `transform ${breathingCfg.exhale}ms ease-in-out`;
+          breathingCircle.style.transform = 'scale(0.8)';
+        } else {
+          phase = 'inhale'; breathingLabel.textContent = 'Inhale';
+          breathingCircle.style.transition = `transform ${breathingCfg.inhale}ms ease-in-out`;
+          breathingCircle.style.transform = 'scale(1.05)';
+        }
+      }, Math.max(800, breathingCfg.inhale + breathingCfg.exhale));
+      breathingToggle.textContent = 'Stop (B)';
+    }
+
+    function stopBreathing() {
+      if (!breathingTimer) return;
+      clearInterval(breathingTimer); breathingTimer = null; breathingLabel.textContent = 'Paused';
+      breathingCircle.style.transition = 'transform 400ms ease-out';
+      breathingCircle.style.transform = 'scale(0.9)';
+      breathingToggle.textContent = 'Start (B)';
+    }
+
+    // Handlers
+    analyzeBtn.addEventListener('click', doAnalyze);
+    saveJournalBtn.addEventListener('click', quickSaveJournal);
+    musicToggle.addEventListener('click', toggleMusic);
+    breathingToggle.addEventListener('click', () => { if (breathingTimer) stopBreathing(); else startBreathing(); });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey && document.activeElement === inputText) { e.preventDefault(); doAnalyze(); }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); quickSaveJournal(); }
+      if (e.key.toLowerCase() === 'm') { e.preventDefault(); toggleMusic(); }
+      if (e.key.toLowerCase() === 'b') { e.preventDefault(); if (breathingTimer) stopBreathing(); else startBreathing(); }
+    });
+
+    exportCardBtn?.addEventListener('click', async () => {
+      try {
+        const canvas = await html2canvas(shareCard, { backgroundColor: null, scale: 2 });
+        const link = document.createElement('a');
+        link.download = 'mooda-emotion-card.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      } catch { }
     });
   });
 </script>

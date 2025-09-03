@@ -73,7 +73,7 @@ MODEL = os.getenv("HF_MODEL", "j-hartmann/emotion-english-distilroberta-base")
 if not HF_API_TOKEN:
     raise RuntimeError("HF_API_TOKEN not set. Put it in .env or your environment.")
 
-API_URL = f"https://api-inference.huggingface.co/models/{MODEL}"
+API_URL = f"https://router.huggingface.co/hf-inference/models/{MODEL}"
 
 app = Flask(
     __name__, static_folder=STATIC_DIR, template_folder=TEMPLATES_DIR
@@ -244,6 +244,84 @@ def analysis_post():
     def _tokenize(text):
         return re.findall(r"[A-Za-z']+", text.lower())
 
+    def _offline_emotion(_text: str):
+        """Return a local heuristic emotion prediction in HF-like format.
+        Produces a list of {label, score} dicts for labels:
+        [joy, love, surprise, sadness, fear, anger, disgust, neutral].
+        """
+        try:
+            tokens = _tokenize(_text or "")
+            if not tokens:
+                return [
+                    {"label": "neutral", "score": 1.0},
+                    {"label": "joy", "score": 0.0},
+                    {"label": "love", "score": 0.0},
+                    {"label": "surprise", "score": 0.0},
+                    {"label": "sadness", "score": 0.0},
+                    {"label": "fear", "score": 0.0},
+                    {"label": "anger", "score": 0.0},
+                    {"label": "disgust", "score": 0.0},
+                ]
+
+            lex = {
+                "joy": {"happy","joy","glad","great","good","amazing","excited","cheerful","delighted","smile","grateful","proud","progress"},
+                "love": {"love","loving","caring","affection","romance","heart","beloved","dear","gratitude","friend"},
+                "surprise": {"surprised","unexpected","shock","shocked","astonished","wow","sudden"},
+                "sadness": {"sad","down","depressed","lonely","cry","tears","unhappy","blue","heartbroken","grief","lost","hurt"},
+                "fear": {"afraid","anxious","anxiety","worry","worried","scared","nervous","panic","fear","terrified","overwhelm","unsafe"},
+                "anger": {"angry","mad","furious","annoyed","frustrated","rage","irritated","pissed","hate","resent"},
+                "disgust": {"disgust","gross","nausea","nauseous","sick","ew","repulsed","nasty","filthy"},
+            }
+            counts = {k: 0 for k in lex.keys()}
+            for t in tokens:
+                for k, kws in lex.items():
+                    if t in kws:
+                        counts[k] += 1
+
+            total = sum(counts.values())
+            if total == 0:
+                # If no keywords matched, default to neutral
+                return [
+                    {"label": "neutral", "score": 1.0},
+                    {"label": "joy", "score": 0.0},
+                    {"label": "love", "score": 0.0},
+                    {"label": "surprise", "score": 0.0},
+                    {"label": "sadness", "score": 0.0},
+                    {"label": "fear", "score": 0.0},
+                    {"label": "anger", "score": 0.0},
+                    {"label": "disgust", "score": 0.0},
+                ]
+
+            # Normalize to probabilities
+            raw = []
+            for k in ["joy","love","surprise","sadness","fear","anger","disgust"]:
+                raw.append({"label": k, "score": counts[k] / total})
+            # Add a small neutral probability inversely proportional to total matches
+            neutral_score = max(0.0, min(0.7, 0.2 if total > 0 else 1.0))
+            # Re-normalize including neutral
+            sum_non_neutral = sum(x["score"] for x in raw)
+            if sum_non_neutral + neutral_score > 0:
+                factor = 1.0 / (sum_non_neutral + neutral_score)
+            else:
+                factor = 1.0
+            normalized = [{"label": x["label"], "score": x["score"] * factor} for x in raw]
+            normalized.append({"label": "neutral", "score": neutral_score * factor})
+            # Sort desc by score to mimic HF output order
+            normalized.sort(key=lambda x: x["score"], reverse=True)
+            return normalized
+        except Exception:
+            # On any error, return a neutral prediction
+            return [
+                {"label": "neutral", "score": 1.0},
+                {"label": "joy", "score": 0.0},
+                {"label": "love", "score": 0.0},
+                {"label": "surprise", "score": 0.0},
+                {"label": "sadness", "score": 0.0},
+                {"label": "fear", "score": 0.0},
+                {"label": "anger", "score": 0.0},
+                {"label": "disgust", "score": 0.0},
+            ]
+
     def _keywords(text, topk=8):
         tokens = _tokenize(text)
         if not tokens:
@@ -311,9 +389,14 @@ def analysis_post():
         return jsonify({"error": "Empty text."}), 400
 
     result, err = _hf_emotion(text)
+    source = "hf"
     if err is not None:
-        status, payload = err
-        return jsonify(payload), status
+        # Attempt offline heuristic fallback to keep the app usable without network
+        result = _offline_emotion(text)
+        source = "offline"
+        if not result:
+            status, payload = err
+            return jsonify(payload), status
 
     labels, scores = _normalize_labels_scores(result)
     if not labels or not scores:
@@ -346,6 +429,84 @@ def analysis_post():
         except Exception as e:
             app.logger.error(f"Failed to save emotion analysis: {str(e)}")
 
+    # Enhanced experience fields
+    emoji_map = {
+        "joy": "😊", "happiness": "😊", "love": "💗", "optimism": "🌤️", "gratitude": "🙏",
+        "surprise": "🤯", "neutral": "😐",
+        "sadness": "😔", "pessimism": "🌧️", "fear": "😟", "anger": "😠", "disgust": "🤢",
+        "annoyance": "😒", "disappointment": "🙁", "embarrassment": "😳", "remorse": "😞",
+    }
+    emoji = emoji_map.get(dominant.lower(), "🌀")
+
+    theme_map = {
+        "joy": {"primary": "#22c55e", "gradient": "linear-gradient(135deg,#d1fae5,#a7f3d0,#6ee7b7)"},
+        "happiness": {"primary": "#22c55e", "gradient": "linear-gradient(135deg,#d1fae5,#a7f3d0,#6ee7b7)"},
+        "love": {"primary": "#f43f5e", "gradient": "linear-gradient(135deg,#ffe4e6,#fecdd3,#fda4af)"},
+        "optimism": {"primary": "#06b6d4", "gradient": "linear-gradient(135deg,#e0f2fe,#bae6fd,#7dd3fc)"},
+        "gratitude": {"primary": "#a855f7", "gradient": "linear-gradient(135deg,#ede9fe,#ddd6fe,#c4b5fd)"},
+        "surprise": {"primary": "#f59e0b", "gradient": "linear-gradient(135deg,#fff7ed,#ffedd5,#fed7aa)"},
+        "neutral": {"primary": "#94a3b8", "gradient": "linear-gradient(135deg,#f1f5f9,#e2e8f0,#cbd5e1)"},
+        "sadness": {"primary": "#3b82f6", "gradient": "linear-gradient(135deg,#dbeafe,#bfdbfe,#93c5fd)"},
+        "pessimism": {"primary": "#64748b", "gradient": "linear-gradient(135deg,#e2e8f0,#cbd5e1,#94a3b8)"},
+        "fear": {"primary": "#8b5cf6", "gradient": "linear-gradient(135deg,#ede9fe,#ddd6fe,#c4b5fd)"},
+        "anger": {"primary": "#ef4444", "gradient": "linear-gradient(135deg,#fee2e2,#fecaca,#fca5a5)"},
+        "disgust": {"primary": "#84cc16", "gradient": "linear-gradient(135deg,#ecfccb,#d9f99d,#bef264)"},
+        "annoyance": {"primary": "#f97316", "gradient": "linear-gradient(135deg,#ffedd5,#fed7aa,#fdba74)"},
+        "disappointment": {"primary": "#64748b", "gradient": "linear-gradient(135deg,#e2e8f0,#cbd5e1,#94a3b8)"},
+        "embarrassment": {"primary": "#f472b6", "gradient": "linear-gradient(135deg,#fdf2f8,#fce7f3,#fbcfe8)"},
+        "remorse": {"primary": "#475569", "gradient": "linear-gradient(135deg,#e2e8f0,#cbd5e1,#94a3b8)"},
+        "default": {"primary": "#6366f1", "gradient": "linear-gradient(135deg,#e0e7ff,#c7d2fe,#a5b4fc)"},
+    }
+    theme = theme_map.get(dominant.lower(), theme_map["default"])
+
+    # Breathing cadence based on arousal
+    if arousal >= 0.7:
+        inhale_ms, exhale_ms = 3000, 4500
+    elif arousal >= 0.4:
+        inhale_ms, exhale_ms = 3000, 3500
+    else:
+        inhale_ms, exhale_ms = 3500, 3500
+
+    # Music suggestion
+    music = {"url": url_for('static', filename='audio/1.mp3')}
+
+    micro_actions_map = {
+        "anger": ["Box-breath for 2 minutes", "Write a kind boundary statement", "Walk for 3 minutes"],
+        "sadness": ["Send a message to someone you trust", "Drink water and sit by a window", "Name one need"],
+        "fear": ["List 3 things you control", "Do the 5-4-3-2-1 grounding", "Plan one safe step"],
+        "disgust": ["Note the value being crossed", "Gently tidy one thing", "Say a self-compassion phrase"],
+        "surprise": ["Write an alternate interpretation", "Pause 60 seconds before acting"],
+        "joy": ["Savor 3 details", "Share good news", "Schedule a repeat"]
+    }
+    micro_actions = micro_actions_map.get(dominant.lower(), suggestions[:3])
+
+    # Lightweight streak/progress tracking in session
+    try:
+        today = datetime.today().date()
+        today_str = today.isoformat()
+        last_date = session.get('analyze_last_date')
+        streak = int(session.get('analyze_streak_days', 0))
+        from datetime import timedelta
+        if last_date:
+            try:
+                last = datetime.fromisoformat(last_date).date()
+                if today == last:
+                    pass
+                elif today - last == timedelta(days=1):
+                    streak += 1
+                else:
+                    streak = 1
+            except Exception:
+                streak = 1
+        else:
+            streak = 1
+        session['analyze_last_date'] = today_str
+        session['analyze_streak_days'] = streak
+        session['analyze_today_count'] = int(session.get('analyze_today_count', 0)) + (1 if last_date == today_str else 1)
+        session['analyze_total_count'] = int(session.get('analyze_total_count', 0)) + 1
+    except Exception:
+        streak = 1
+
     return jsonify(
         {
             "labels": labels,
@@ -362,8 +523,67 @@ def analysis_post():
             "prompt": prompt,
             "stats": stats,
             "model": MODEL,
+            "source": source,
+            "emoji": emoji,
+            "theme": theme,
+            "breathing": {"inhale_ms": inhale_ms, "exhale_ms": exhale_ms},
+            "music": music,
+            "micro_actions": micro_actions,
+            "progress": {
+                "today_entries": int(session.get('analyze_today_count', 1)),
+                "total_entries": int(session.get('analyze_total_count', 1)),
+                "streak_days": int(session.get('analyze_streak_days', 1)),
+            },
         }
     )
+
+
+@app.route('/analyze/history', methods=['GET'])
+def analyze_history_api():
+    """Return recent emotion analyses for the logged-in user."""
+    if not is_loggedin():
+        return jsonify([])
+    try:
+        emotion = Emotion(db_connection)
+        rows = emotion.get_user_emotions(session["user_id"]["user_id"], limit=50)
+        out = []
+        for r in rows or []:
+            try:
+                data = json.loads(r.get('emotion_data')) if isinstance(r.get('emotion_data'), str) else r.get('emotion_data')
+            except Exception:
+                data = r.get('emotion_data')
+            created = r.get('created_at')
+            created_str = created.isoformat() if hasattr(created, 'isoformat') else str(created)
+            out.append({
+                "text": r.get("input_text"),
+                "data": data,
+                "created_at": created_str,
+            })
+        return jsonify(out)
+    except Exception as e:
+        app.logger.error(f"Failed to fetch analyze history: {e}")
+        return jsonify([])
+
+
+@app.route('/analyze/save-journal', methods=['POST'])
+def analyze_save_journal():
+    """Quick-save the latest analysis input as a journal entry."""
+    if not is_loggedin():
+        return jsonify({"status": False, "message": "Not authenticated"}), 401
+    payload = request.get_json(silent=True) or {}
+    text = (payload.get('text') or '').strip()
+    title = (payload.get('title') or 'Emotion Reflection')
+    if not text:
+        return jsonify({"status": False, "message": "Text is required"}), 400
+    try:
+        journal = Journal()
+        today = datetime.today().date()
+        res = journal.create_journal(journal_content=text, journal_date=today, journal_title=title, user_id=session["user_id"]["user_id"])
+        ok = bool(res.get("journal_created"))
+        return jsonify({"status": ok})
+    except Exception as e:
+        app.logger.error(f"Failed to save journal from analysis: {e}")
+        return jsonify({"status": False, "message": "Server error"}), 500
 
 
 @app.route('/admin/db-config', methods=['GET', 'POST'])
@@ -532,7 +752,7 @@ def emotion_history():
         return redirect("/login")
     
     # Get emotion history
-    emotion = Emotion()
+    emotion = Emotion(db_connection)
     emotion_history = emotion.get_user_emotions(session["user_id"]["user_id"])
     
     # Parse the emotion data
