@@ -39,7 +39,7 @@ Clone the project
   git clone https://github.com/bigcbull/mooda.git
 ```
 
-Go to the project directory /Users/nashon1/Downloads/mindease-main/static/img/myspace.jpg
+Go to the project directory /Users/nashon1/Downloads/mooda-main/static/img/myspace.jpg
 
 ```bash
   cd mooda
