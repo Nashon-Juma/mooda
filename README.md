@@ -36,7 +36,7 @@ This documentation is intended for hobbyists or businesses who want to host this
 Clone the project
 
 ```bash
-  git clone https://github.com/bigcbull/mooda.git
+  git clone https://github.com/nashon-juma/mooda.git
 ```
 
 Go to the project directory /Users/nashon1/Downloads/mooda-main/static/img/myspace.jpg
