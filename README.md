@@ -130,6 +130,7 @@ Example - To view documentation for the user module in the user package one can 
 ## 👨‍🎓 Authors
 - [@Nashon Juma](https://www.github.com/nashon-juma)
 
+
 ## ©️ Credits
 
 - Meditation timer sound effect by [@Ivymusic](https://pixabay.com/music/ambient-space-atmospheric-background-124841/)
