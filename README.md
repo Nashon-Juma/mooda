@@ -5,8 +5,6 @@
 
 | ![coverage badge](https://img.shields.io/badge/coverage%20-90%25-success) | ![pylint badge](https://img.shields.io/badge/pylint-passed-blue) | ![pylint badge](https://img.shields.io/badge/flake8-passed-blue) | ![black badge](https://img.shields.io/badge/code%20syle-black-black) |
 
-
-
 ## 🤔 What is Mooda?
 
 Mooda is an open-source web application built with [Flask](https://flask.palletsprojects.com/). It allows users to track and work to elevate their mood swings on a daily basis using a scale. Additionally, users can journal to reflect on their day, share their progress with a psychologist, and unwind while listening to instrumental music that encourages meditation.
